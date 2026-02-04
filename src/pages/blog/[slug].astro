@@ -1,0 +1,99 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import { db } from '../../db';
+import { posts, users } from '../../db/schema';
+import { eq } from 'drizzle-orm';
+import { getMarkdownParser } from '../../lib/markdown';
+import Badge from '../../components/ui/Badge.astro';
+const { slug } = Astro.params;
+if (!slug) {
+    return Astro.redirect('/404');
+}
+const post = await db
+    .select({
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        publishedAt: posts.publishedAt,
+        readingTime: posts.readingTime,
+        author: users.username,
+        tags: posts.tags,
+        excerpt: posts.excerpt,
+    })
+    .from(posts)
+    .innerJoin(users, eq(posts.authorId, users.id))
+    .where(eq(posts.slug, slug))
+    .get();
+if (!post) {
+    return Astro.redirect('/404');
+}
+const md = await getMarkdownParser();
+const contentHtml = md.render(post.content);
+const ogImage = new URL(`/og/${slug}.png`, Astro.url);
+const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    image: [ogImage.toString()],
+    datePublished: post.publishedAt
+        ? new Date(post.publishedAt).toISOString()
+        : new Date().toISOString(),
+    author: [
+        {
+            '@type': 'Person',
+            name: post.author,
+        },
+    ],
+    description: post.excerpt || post.title,
+};
+---
+
+<Layout
+    title={post.title}
+    description={post.excerpt || post.title}
+    image={ogImage.toString()}
+    type="article"
+>
+    <Fragment slot="head">
+        <script type="application/ld+json" set:html={JSON.stringify(articleSchema)} />
+    </Fragment>
+    <Header />
+    <article class="container mx-auto max-w-3xl py-6 lg:py-12 px-4">
+        <div class="space-y-4 text-left">
+            <div class="flex items-center gap-4 text-slate-500 dark:text-slate-400 text-sm">
+                {
+                    post.publishedAt && (
+                        <time datetime={new Date(post.publishedAt).toISOString()}>
+                            {new Date(post.publishedAt).toLocaleDateString()}
+                        </time>
+                    )
+                }
+                <span>•</span>
+                <span>{post.readingTime}</span>
+            </div>
+            <h1 class="text-4xl font-bold tracking-tight lg:text-5xl">{post.title}</h1>
+            {
+                post.tags && (
+                    <div class="flex flex-wrap gap-2 mt-4">
+                        {post.tags.split(',').map((tag) => (
+                            <a href={`/?q=${tag.trim()}`}>
+                                <Badge
+                                    variant="secondary"
+                                    class="hover:bg-slate-200 dark:hover:bg-slate-700"
+                                >
+                                    #{tag.trim()}
+                                </Badge>
+                            </a>
+                        ))}
+                    </div>
+                )
+            }
+        </div>
+        <hr class="my-8 border-slate-200 dark:border-slate-800" />
+        <div
+            class="prose prose-slate dark:prose-invert mx-auto max-w-none"
+            set:html={contentHtml}
+        />
+    </article>
+</Layout>

@@ -1,0 +1,87 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { lucia } from '../lib/auth';
+import { db } from '../db';
+import { users } from '../db/schema';
+import { Bcrypt } from 'oslo/password';
+import { eq } from 'drizzle-orm';
+import Button from '../components/ui/Button.astro';
+import Input from '../components/ui/Input.astro';
+import Label from '../components/ui/Label.astro';
+let errorMessage = '';
+if (Astro.request.method === 'POST') {
+    const formData = await Astro.request.formData();
+    const username = formData.get('username');
+    const password = formData.get('password');
+    if (typeof username !== 'string' || username.length < 3 || username.length > 31) {
+        errorMessage = 'Invalid username';
+    } else if (typeof password !== 'string' || password.length < 6 || password.length > 255) {
+        errorMessage = 'Invalid password';
+    } else {
+        const existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.username, username))
+            .get();
+        if (!existingUser) {
+            errorMessage = 'Incorrect username or password';
+        } else {
+            const validPassword = await new Bcrypt().verify(existingUser.password_hash, password);
+            if (!validPassword) {
+                errorMessage = 'Incorrect username or password';
+            } else {
+                const session = await lucia.createSession(existingUser.id, {});
+                const sessionCookie = lucia.createSessionCookie(session.id);
+                Astro.cookies.set(
+                    sessionCookie.name,
+                    sessionCookie.value,
+                    sessionCookie.attributes,
+                );
+                return Astro.redirect('/');
+            }
+        }
+    }
+}
+---
+
+<Layout title="Login">
+    <main class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-sm space-y-6">
+            <h1 class="text-2xl font-bold text-center">Welcome Back</h1>
+            {errorMessage && <p class="text-sm text-red-500 text-center">{errorMessage}</p>}
+            <form method="post" class="space-y-4">
+                <div class="space-y-2">
+                    <Label for="username">Username</Label>
+                    <Input
+                        id="username"
+                        name="username"
+                        required
+                        minlength="5"
+                        maxlength="31"
+                        autofocus
+                    />
+                </div>
+                <div class="space-y-2 mt-6">
+                    <Label for="password">Password</Label>
+                    <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        minlength="8"
+                        pattern="(?=.*[!@#$%^&*()_+\-=\[\]{};':\\x22\\\\|,.<>/?]).{8,}"
+                        title="Must be at least 8 characters and contain at least one special symbol"
+                        maxlength="255"
+                    />
+                </div>
+                <Button type="submit" class="w-full"> Sign In </Button>
+            </form>
+            <p class="text-center text-sm text-slate-500">
+                Don't have an account? <a
+                    href="/register"
+                    class="underline hover:text-slate-900 dark:hover:text-slate-50">Sign up</a
+                >
+            </p>
+        </div>
+    </main>
+</Layout>

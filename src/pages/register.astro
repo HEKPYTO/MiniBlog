@@ -1,0 +1,94 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { lucia } from '../lib/auth';
+import { generateId } from 'lucia';
+import { db } from '../db';
+import { users } from '../db/schema';
+import { Bcrypt } from 'oslo/password';
+import { eq } from 'drizzle-orm';
+import Button from '../components/ui/Button.astro';
+import Input from '../components/ui/Input.astro';
+import Label from '../components/ui/Label.astro';
+let errorMessage = '';
+if (Astro.request.method === 'POST') {
+    const formData = await Astro.request.formData();
+    const username = formData.get('username');
+    const password = formData.get('password');
+    if (
+        typeof username !== 'string' ||
+        username.length < 3 ||
+        username.length > 31 ||
+        !/^[a-zA-Z0-9_-]+$/.test(username)
+    ) {
+        errorMessage = 'Invalid username: 3-31 chars, alphanumeric, underscore, hyphen';
+    } else if (typeof password !== 'string' || password.length < 8 || password.length > 255) {
+        errorMessage = 'Password must be at least 8 characters';
+    } else {
+        const existingUser = await db
+            .select()
+            .from(users)
+            .where(eq(users.username, username))
+            .get();
+        if (existingUser) {
+            errorMessage = 'Username already taken';
+        } else {
+            const passwordHash = await new Bcrypt().hash(password);
+            const userId = generateId(15);
+            const userCount = (await db.select().from(users).all()).length;
+            const role = userCount === 0 ? 'owner' : 'user';
+            await db.insert(users).values({
+                id: userId,
+                username,
+                password_hash: passwordHash,
+                role: role,
+            });
+            const session = await lucia.createSession(userId, {});
+            const sessionCookie = lucia.createSessionCookie(session.id);
+            Astro.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
+            return Astro.redirect('/');
+        }
+    }
+}
+---
+
+<Layout title="Register">
+    <main class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-sm space-y-6">
+            <h1 class="text-2xl font-bold text-center">Create Account</h1>
+            {errorMessage && <p class="text-sm text-red-500 text-center">{errorMessage}</p>}
+            <form method="post" class="space-y-4">
+                <div class="space-y-2">
+                    <Label for="username">Username</Label>
+                    <Input
+                        id="username"
+                        name="username"
+                        required
+                        minlength="5"
+                        maxlength="31"
+                        autofocus
+                    />
+                </div>
+                <div class="space-y-2 mt-6">
+                    <Label for="password">Password</Label>
+                    <Input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required
+                        minlength="8"
+                        pattern="(?=.*[!@#$%^&*()_+\-=\[\]{};':\\x22\\\\|,.<>/?]).{8,}"
+                        title="Must be at least 8 characters and contain at least one special symbol"
+                        maxlength="255"
+                    />
+                </div>
+                <Button type="submit" class="w-full"> Sign Up </Button>
+            </form>
+            <p class="text-center text-sm text-slate-500">
+                Already have an account? <a
+                    href="/login"
+                    class="underline hover:text-slate-900 dark:hover:text-slate-50">Sign in</a
+                >
+            </p>
+        </div>
+    </main>
+</Layout>

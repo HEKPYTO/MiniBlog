@@ -1,0 +1,398 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import { db } from '../../db';
+import { users } from '../../db/schema';
+import { eq, like, and, asc, desc } from 'drizzle-orm';
+import { generateId } from 'lucia';
+import { Bcrypt } from 'oslo/password';
+import Button from '../../components/ui/Button.astro';
+import Badge from '../../components/ui/Badge.astro';
+import Input from '../../components/ui/Input.astro';
+import Label from '../../components/ui/Label.astro';
+import Select from '../../components/ui/Select.astro';
+const user = Astro.locals.user;
+if (!user || user.role !== 'owner') {
+    return Astro.redirect('/');
+}
+let message = '';
+let messageType = 'success';
+if (Astro.request.method === 'POST') {
+    const formData = await Astro.request.formData();
+    const action = formData.get('action');
+    try {
+        if (action === 'create') {
+            const username = formData.get('username');
+            const password = formData.get('password');
+            const role = formData.get('role');
+            if (typeof username !== 'string' || username.length < 3)
+                throw new Error('Invalid username');
+            if (typeof password !== 'string' || password.length < 8)
+                throw new Error('Invalid password (min 8 chars)');
+            if (!['user', 'admin', 'owner'].includes(role)) throw new Error('Invalid role');
+            const existing = await db
+                .select()
+                .from(users)
+                .where(eq(users.username, username))
+                .get();
+            if (existing) throw new Error('Username taken');
+            const userId = generateId(15);
+            const passwordHash = await new Bcrypt().hash(password);
+            await db.insert(users).values({
+                id: userId,
+                username,
+                password_hash: passwordHash,
+                role,
+            });
+            message = `Created user ${username}`;
+        } else if (action === 'update_role') {
+            const targetId = formData.get('target_id');
+            const newRole = formData.get('new_role');
+            if (targetId === user.id) throw new Error('Cannot change own role here');
+            if (!['user', 'admin', 'owner'].includes(newRole)) throw new Error('Invalid role');
+            await db.update(users).set({ role: newRole }).where(eq(users.id, targetId));
+            message = 'Role updated';
+        } else if (action === 'delete') {
+            const targetId = formData.get('target_id');
+            if (targetId === user.id) throw new Error('Cannot delete yourself');
+            await db.delete(users).where(eq(users.id, targetId));
+            message = 'User deleted';
+        }
+    } catch (e) {
+        message = e.message;
+        messageType = 'error';
+    }
+}
+
+const url = new URL(Astro.request.url);
+const q = url.searchParams.get('q') || '';
+const roleFilter = url.searchParams.get('role') || '';
+const sort = url.searchParams.get('sort') || '';
+const order = url.searchParams.get('order') || '';
+
+let orderBy;
+if (sort === 'created') {
+    orderBy = order === 'asc' ? asc(users.createdAt) : desc(users.createdAt);
+} else if (sort === 'username') {
+    orderBy = order === 'asc' ? asc(users.username) : desc(users.username);
+} else if (sort === 'role') {
+    orderBy = order === 'asc' ? asc(users.role) : desc(users.role);
+} else {
+    orderBy = desc(users.createdAt);
+}
+
+const filters = [];
+if (q) {
+    filters.push(like(users.username, `%${q}%`));
+}
+if (roleFilter && ['user', 'admin', 'owner'].includes(roleFilter)) {
+    filters.push(eq(users.role, roleFilter));
+}
+
+const allUsers = await db
+    .select()
+    .from(users)
+    .where(and(...filters))
+    .orderBy(orderBy)
+    .all();
+
+function getSortLink(column) {
+    const params = new URLSearchParams(url.searchParams);
+    if (sort === column) {
+        if (order === 'desc') {
+            params.set('order', 'asc');
+        } else if (order === 'asc') {
+            params.delete('sort');
+            params.delete('order');
+        } else {
+            params.set('order', 'desc');
+        }
+    } else {
+        params.set('sort', column);
+        params.set('order', 'desc');
+    }
+    return `?${params.toString()}`;
+}
+---
+
+<Layout title="User Manager">
+    <Header />
+    <main class="container mx-auto max-w-5xl py-8 px-4">
+        <div class="grid gap-8 lg:grid-cols-3 mb-8 items-center">
+            <div class="lg:col-span-1">
+                <h1 class="text-3xl font-bold">User Management</h1>
+            </div>
+            <div class="lg:col-span-2">
+                <form method="get" class="flex gap-2 w-full">
+                    <Input
+                        type="text"
+                        name="q"
+                        value={q}
+                        placeholder="Search username..."
+                        class="flex-1 h-9"
+                        oninput="this.form.submit()"
+                        autofocus={!!q}
+                    />
+                    {
+                        (q || roleFilter) && (
+                            <a href="/admin/users" class="flex items-center">
+                                <Button variant="ghost" type="button" class="h-9">
+                                    Clear
+                                </Button>
+                            </a>
+                        )
+                    }
+                    <Select
+                        name="role"
+                        class="h-9 w-auto min-w-[120px]"
+                        onchange="this.form.submit()"
+                    >
+                        <option value="">All Roles</option>
+                        <option value="user" selected={roleFilter === 'user'}>User</option>
+                        <option value="admin" selected={roleFilter === 'admin'}>Admin</option>
+                        <option value="owner" selected={roleFilter === 'owner'}>Owner</option>
+                    </Select>
+                    <a href="/admin">
+                        <Button variant="outline" type="button" class="h-9 shrink-0"> Back </Button>
+                    </a>
+                </form>
+            </div>
+        </div>
+
+        {
+            message && (
+                <div
+                    class={`p-4 rounded-md mb-6 ${messageType === 'error' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}
+                >
+                    {message}
+                </div>
+            )
+        }
+
+        <div class="grid gap-8 lg:grid-cols-3">
+            <div class="lg:col-span-1">
+                <div
+                    class="rounded-md border border-slate-200 dark:border-slate-800 p-6 bg-white dark:bg-slate-950"
+                >
+                    <h2 class="text-xl font-bold mb-4">Create User</h2>
+                    <form method="post" class="space-y-4">
+                        <input type="hidden" name="action" value="create" />
+                        <div class="space-y-2">
+                            <Label for="username">Username</Label>
+                            <Input name="username" id="username" required minlength="3" />
+                        </div>
+                        <div class="space-y-2">
+                            <Label for="password">Password</Label>
+                            <Input
+                                type="password"
+                                name="password"
+                                id="password"
+                                required
+                                minlength="8"
+                            />
+                        </div>
+                        <div class="space-y-2">
+                            <Label for="role">Role</Label>
+                            <Select name="role" id="role">
+                                <option value="user">User</option>
+                                <option value="admin">Admin</option>
+                                <option value="owner">Owner</option>
+                            </Select>
+                        </div>
+                        <Button type="submit" class="w-full">Create User</Button>
+                    </form>
+                </div>
+            </div>
+            <div class="lg:col-span-2">
+                <div
+                    class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden"
+                >
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead
+                                class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-900 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800"
+                            >
+                                <tr>
+                                    
+                                    <th class="px-6 py-3 w-1/3 align-middle cursor-pointer select-none">
+                                        <a
+                                            href={getSortLink('username')}
+                                            class="inline-flex items-center gap-1 group"
+                                        >
+                                            <span>Username</span>
+                                            {
+                                                sort === 'username' &&
+                                                    (order === 'asc' ? (
+                                                        <span>&uarr;</span>
+                                                    ) : (
+                                                        <span>&darr;</span>
+                                                    ))
+                                            }
+                                        </a>
+                                    </th>
+                                    
+                                    <th class="px-6 py-3 w-1/6 text-center align-middle cursor-pointer select-none">
+                                        <a
+                                            href={getSortLink('role')}
+                                            class="inline-flex items-center justify-center gap-1 group"
+                                        >
+                                            <span>Role</span>
+                                            {
+                                                sort === 'role' &&
+                                                    (order === 'asc' ? (
+                                                        <span>&uarr;</span>
+                                                    ) : (
+                                                        <span>&darr;</span>
+                                                    ))
+                                            }
+                                        </a>
+                                    </th>
+                                    <th
+                                        class="px-6 py-3 cursor-pointer select-none w-1/3 text-center align-middle"
+                                    >
+                                        <a
+                                            href={getSortLink('created')}
+                                            class="inline-flex items-center justify-center gap-1 group"
+                                        >
+                                            <span>Created</span>
+                                            {
+                                                sort === 'created' &&
+                                                    (order === 'asc' ? (
+                                                        <span>&uarr;</span>
+                                                    ) : (
+                                                        <span>&darr;</span>
+                                                    ))
+                                            }
+                                        </a>
+                                    </th>
+                                    <th class="px-6 py-3 text-center w-1/6 align-middle">Actions</th
+                                    >
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {
+                                    allUsers.map((u) => (
+                                        <tr class="border-b border-slate-200 dark:border-slate-800 last:border-0 hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                            <td class="px-6 py-4 font-medium">
+                                                {u.username} {u.id === user.id && '(You)'}
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                <Badge
+                                                    variant={
+                                                        u.role === 'owner'
+                                                            ? 'destructive'
+                                                            : u.role === 'admin'
+                                                              ? 'default'
+                                                              : 'secondary'
+                                                    }
+                                                >
+                                                    {u.role}
+                                                </Badge>
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                {new Date(u.createdAt).toLocaleDateString()}
+                                            </td>
+                                            <td class="px-6 py-4 text-right">
+                                                {u.id !== user.id && (
+                                                    <div class="flex items-center justify-end gap-2">
+                                                        <form method="post" class="inline">
+                                                            <input
+                                                                type="hidden"
+                                                                name="action"
+                                                                value="update_role"
+                                                            />
+                                                            <input
+                                                                type="hidden"
+                                                                name="target_id"
+                                                                value={u.id}
+                                                            />
+                                                            <Select
+                                                                name="new_role"
+                                                                onchange="this.form.submit()"
+                                                                class="h-8 py-1 text-xs w-auto"
+                                                            >
+                                                                <option
+                                                                    value="user"
+                                                                    selected={u.role === 'user'}
+                                                                >
+                                                                    User
+                                                                </option>
+                                                                <option
+                                                                    value="admin"
+                                                                    selected={u.role === 'admin'}
+                                                                >
+                                                                    Admin
+                                                                </option>
+                                                                <option
+                                                                    value="owner"
+                                                                    selected={u.role === 'owner'}
+                                                                >
+                                                                    Owner
+                                                                </option>
+                                                            </Select>
+                                                        </form>
+                                                        <form
+                                                            method="post"
+                                                            class="inline"
+                                                            onsubmit="return confirm('Delete user?');"
+                                                        >
+                                                            <input
+                                                                type="hidden"
+                                                                name="action"
+                                                                value="delete"
+                                                            />
+                                                            <input
+                                                                type="hidden"
+                                                                name="target_id"
+                                                                value={u.id}
+                                                            />
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                class="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                                                            >
+                                                                <span class="sr-only">Delete</span>
+                                                                <svg
+                                                                    xmlns="http://www.w3.org/2000/svg"
+                                                                    width="16"
+                                                                    height="16"
+                                                                    viewBox="0 0 24 24"
+                                                                    fill="none"
+                                                                    stroke="currentColor"
+                                                                    stroke-width="2"
+                                                                    stroke-linecap="round"
+                                                                    stroke-linejoin="round"
+                                                                    class="lucide lucide-trash-2"
+                                                                >
+                                                                    <path d="M3 6h18" />
+                                                                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                                                                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                                                    <line
+                                                                        x1="10"
+                                                                        x2="10"
+                                                                        y1="11"
+                                                                        y2="17"
+                                                                    />
+                                                                    <line
+                                                                        x1="14"
+                                                                        x2="14"
+                                                                        y1="11"
+                                                                        y2="17"
+                                                                    />
+                                                                </svg>
+                                                            </Button>
+                                                        </form>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</Layout>

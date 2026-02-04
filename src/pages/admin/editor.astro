@@ -1,0 +1,201 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import { db } from '../../db';
+import { posts } from '../../db/schema';
+import { eq } from 'drizzle-orm';
+import { generateId } from 'lucia';
+import { calculateReadingTime, slugify } from '../../lib/utils';
+import Button from '../../components/ui/Button.astro';
+import Input from '../../components/ui/Input.astro';
+import Label from '../../components/ui/Label.astro';
+import Select from '../../components/ui/Select.astro';
+const user = Astro.locals.user;
+if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+    return Astro.redirect('/');
+}
+let post = {
+    id: '',
+    title: '',
+    slug: '',
+    excerpt: '',
+    content: '',
+    status: 'draft',
+    publishedAt: null,
+    tags: '',
+};
+const url = new URL(Astro.request.url);
+const id = url.searchParams.get('id');
+if (id) {
+    const existingPost = await db.select().from(posts).where(eq(posts.id, id)).get();
+    if (existingPost) {
+        post = existingPost;
+    }
+}
+if (Astro.request.method === 'POST') {
+    const formData = await Astro.request.formData();
+    const title = formData.get('title');
+    const slugRaw = formData.get('slug');
+    const content = formData.get('content');
+    const excerpt = formData.get('excerpt');
+    const status = formData.get('status') || 'draft';
+    const tags = formData.get('tags');
+    const dateStr = formData.get('publishedAt');
+    let slug = slugRaw ? slugify(slugRaw) : slugify(title);
+    const readingTime = calculateReadingTime(content);
+    const publishedAt = dateStr ? new Date(dateStr).getTime() : Date.now();
+    const now = Date.now();
+
+    let existingSlug = await db.select().from(posts).where(eq(posts.slug, slug)).get();
+    if (existingSlug && existingSlug.id !== id) {
+        slug = `${slug}-${generateId(5)}`;
+    }
+
+    if (id) {
+        await db
+            .update(posts)
+            .set({
+                title,
+                slug,
+                content,
+                excerpt,
+                status,
+                tags,
+                readingTime,
+                publishedAt,
+                updatedAt: now,
+            })
+            .where(eq(posts.id, id));
+    } else {
+        const newId = generateId(15);
+        await db.insert(posts).values({
+            id: newId,
+            title,
+            slug,
+            content,
+            excerpt,
+            status,
+            tags,
+            readingTime,
+            publishedAt,
+            authorId: user.id,
+            createdAt: now,
+            updatedAt: now,
+        });
+        return Astro.redirect(`/admin/editor?id=${newId}`);
+    }
+    return Astro.redirect('/admin');
+}
+const now = new Date();
+now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+const defaultDate = post.publishedAt
+    ? new Date(post.publishedAt).toISOString().slice(0, 16)
+    : now.toISOString().slice(0, 16);
+---
+
+<Layout title="Editor">
+    <Header />
+    <main class="h-[calc(100vh-3.5rem)] flex flex-col">
+        <form method="post" class="flex flex-col h-full">
+            <div
+                class="border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between bg-white dark:bg-slate-950"
+            >
+                <div class="flex items-center gap-4 flex-1">
+                    <input
+                        type="text"
+                        name="title"
+                        value={post.title}
+                        placeholder="Post Title"
+                        required
+                        class="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 w-full placeholder:text-slate-400"
+                        oninput="document.getElementById('slug').value = this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')"
+                    />
+                    <Button type="submit"> Save </Button>
+                </div>
+            </div>
+            <div class="flex-1 flex overflow-hidden">
+                <div class="w-1/2 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+                    <textarea
+                        name="content"
+                        id="markdown-input"
+                        class="flex-1 w-full h-full p-4 resize-none bg-transparent focus:outline-none font-mono text-sm"
+                        placeholder="Write markdown content here..."
+                        required>{post.content}</textarea
+                    >
+                    <div
+                        class="border-t border-slate-200 dark:border-slate-800 p-3 space-y-1 bg-slate-50 dark:bg-slate-900/50"
+                    >
+                        <div>
+                            <Label for="slug" class="text-xs">Slug</Label>
+                            <Input
+                                type="text"
+                                id="slug"
+                                name="slug"
+                                value={post.slug}
+                                class="h-7 text-xs"
+                            />
+                        </div>
+                        <div>
+                            <Label for="excerpt" class="text-xs">Excerpt</Label>
+                            <textarea
+                                name="excerpt"
+                                id="excerpt"
+                                rows="2"
+                                class="flex w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400"
+                                >{post.excerpt}</textarea
+                            >
+                        </div>
+                        <div>
+                            <Label for="tags" class="text-xs">Tags (comma separated)</Label>
+                            <Input
+                                type="text"
+                                id="tags"
+                                name="tags"
+                                value={post.tags}
+                                class="h-7 text-xs"
+                            />
+                        </div>
+                        <div>
+                            <Label for="publishedAt" class="text-xs">Publish Date</Label>
+                            <Input
+                                type="datetime-local"
+                                id="publishedAt"
+                                name="publishedAt"
+                                value={defaultDate}
+                                class="h-8 text-xs"
+                            />
+                        </div>
+                        <div>
+                            <Label for="status" class="text-xs">Status</Label>
+                            <Select name="status" id="status" class="h-8 py-1 text-xs">
+                                <option value="draft" selected={post.status === 'draft'}
+                                    >Draft</option
+                                >
+                                <option value="published" selected={post.status === 'published'}
+                                    >Published</option
+                                >
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    class="w-1/2 overflow-auto bg-white dark:bg-slate-950 p-8 prose prose-slate dark:prose-invert max-w-none"
+                    id="preview"
+                >
+                </div>
+            </div>
+        </form>
+    </main>
+</Layout>
+<script>
+    import markdownit from 'markdown-it';
+    const md = markdownit();
+    const input = document.getElementById('markdown-input');
+    const preview = document.getElementById('preview');
+    function update() {
+        if (!input || !preview) return;
+        preview.innerHTML = md.render(input.value);
+    }
+    input?.addEventListener('input', update);
+    update();
+</script>

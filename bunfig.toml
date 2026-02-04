@@ -1,0 +1,4 @@
+[test]
+# Only run tests in src directory (unit tests)
+# Exclude the 'tests' directory which contains Playwright E2E tests
+testMatch = ["tests/**/*.test.{js,ts}"]
