@@ -15,9 +15,9 @@ export function slugify(text) {
         .toString()
         .toLowerCase()
         .trim()
-            .replace(/\s+/g, '-')     
-            .replace(/[^\w-]+/g, '') 
-            .replace(/--+/g, '-')   
-            .replace(/^-+/, '')       
-            .replace(/-+$/, '');      
-        }
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]+/g, '')
+        .replace(/--+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+}

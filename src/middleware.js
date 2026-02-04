@@ -21,7 +21,6 @@ async function seedOwner() {
             .where(eq(users.username, username))
             .get();
         if (!existingUser) {
-            
             const userId = generateId(15);
             await db.insert(users).values({
                 id: userId,
@@ -29,10 +28,8 @@ async function seedOwner() {
                 password_hash: hash,
                 role: 'owner',
             });
-            
         } else if (existingUser.role !== 'owner') {
             await db.update(users).set({ role: 'owner' }).where(eq(users.id, existingUser.id));
-            
         }
         ownerSeeded = true;
     } catch {

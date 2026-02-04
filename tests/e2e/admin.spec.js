@@ -207,7 +207,7 @@ test.describe('User Management', () => {
 
     test('Users: Sort', async ({ page }) => {
         await page.goto('/admin/users');
-         
+
         await page.click('a:has-text("Created")');
         await page.waitForURL(/sort=created&order=desc/);
 

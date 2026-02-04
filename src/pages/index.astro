@@ -49,11 +49,10 @@ try {
             .from(posts)
             .innerJoin(users, eq(posts.authorId, users.id))
             .where(and(eq(posts.status, 'published'), lte(posts.publishedAt, Date.now())))
-        .orderBy(desc(posts.publishedAt))
-        .all();
+            .orderBy(desc(posts.publishedAt))
+            .all();
     }
 } catch (e) {
-    
     errorMsg = 'Database error: ' + e.message;
 }
 ---

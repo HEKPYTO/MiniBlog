@@ -118,10 +118,14 @@ function getSortLink(column) {
             </div>
         </div>
 
-        <div class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden">
+        <div
+            class="rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 overflow-hidden"
+        >
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-900 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                    <thead
+                        class="text-xs text-slate-700 uppercase bg-slate-50 dark:bg-slate-900 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800"
+                    >
                         <tr>
                             <th class="px-6 py-3 w-1/3 align-middle">
                                 <a
@@ -155,7 +159,9 @@ function getSortLink(column) {
                                     }
                                 </a>
                             </th>
-                            <th class="px-6 py-3 cursor-pointer select-none w-1/6 text-center align-middle">
+                            <th
+                                class="px-6 py-3 cursor-pointer select-none w-1/6 text-center align-middle"
+                            >
                                 <a
                                     href={getSortLink('publishedAt')}
                                     class="inline-flex items-center justify-center gap-1 group"
@@ -192,9 +198,7 @@ function getSortLink(column) {
                                     <td class="px-6 py-4 text-center">
                                         <Badge
                                             variant={
-                                                post.status === 'published'
-                                                    ? 'success'
-                                                    : 'warning'
+                                                post.status === 'published' ? 'success' : 'warning'
                                             }
                                         >
                                             {post.status}
