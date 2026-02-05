@@ -37,6 +37,9 @@ if (Astro.request.method === 'POST') {
                     sessionCookie.value,
                     sessionCookie.attributes,
                 );
+                if (existingUser.role === 'admin' || existingUser.role === 'owner') {
+                    return Astro.redirect('/admin');
+                }
                 return Astro.redirect('/');
             }
         }

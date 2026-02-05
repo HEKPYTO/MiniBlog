@@ -12,7 +12,7 @@ export async function POST(context) {
     }
     const sessionCookie = lucia.createBlankSessionCookie();
     context.cookies.set(sessionCookie.name, sessionCookie.value, sessionCookie.attributes);
-    return context.redirect('/login');
+    return context.redirect('/');
 }
 export async function GET(context) {
     return context.redirect('/');

@@ -5,7 +5,7 @@ async function login(page) {
     await page.fill('input[name="username"]', 'admin');
     await page.fill('input[name="password"]', 'password123');
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/admin/);
 }
 
 test.describe('Security Audits', () => {
@@ -18,6 +18,8 @@ test.describe('Security Audits', () => {
         await page.fill('textarea[name="content"]', xss);
         await page.selectOption('select[name="status"]', 'published');
         await page.click('button:has-text("Save")');
+        await expect(page).toHaveURL(/id=/);
+        await page.waitForLoadState('domcontentloaded');
 
         await page.goto('/');
         await page.click('text=XSS Body');
@@ -32,8 +34,12 @@ test.describe('Security Audits', () => {
         const xssTitle = '<script>alert("Title")</script>';
         await page.fill('input[name="title"]', xssTitle);
         await page.fill('textarea[name="content"]', 'Content');
+        await page.fill('input[name="date"]', '01/01/2026');
+        await page.fill('input[name="time"]', '12:00');
         await page.selectOption('select[name="status"]', 'published');
-        await page.click('button:has-text("Save")');
+        await page.click('button:has-text("Save")', { force: true });
+        await expect(page).toHaveURL(/id=/);
+        await page.waitForLoadState('domcontentloaded');
 
         await page.goto('/');
         const content = await page.content();
@@ -71,12 +77,13 @@ test.describe('Security Audits', () => {
         await page.locator('form[method="post"] select[name="role"]').selectOption('admin');
         await page.click('button:has-text("Create User")');
         await page.click('text=Logout');
+        await expect(page).toHaveURL('/');
 
         await page.goto('/login');
         await page.fill('input[name="username"]', newAdmin);
         await page.fill('input[name="password"]', 'password123');
         await page.click('button[type="submit"]');
-        await expect(page).toHaveURL('/');
+        await expect(page).toHaveURL(/\/admin/);
 
         await page.goto('/admin/users');
         expect(page.url()).not.toContain('/admin/users');

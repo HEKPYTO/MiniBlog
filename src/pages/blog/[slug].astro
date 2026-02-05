@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { getMarkdownParser } from '../../lib/markdown';
 import Badge from '../../components/ui/Badge.astro';
 const { slug } = Astro.params;
+const user = Astro.locals.user;
 if (!slug) {
     return Astro.redirect('/404');
 }
@@ -72,7 +73,33 @@ const articleSchema = {
                 <span>•</span>
                 <span>{post.readingTime}</span>
             </div>
-            <h1 class="text-4xl font-bold tracking-tight lg:text-5xl">{post.title}</h1>
+            <h1 class="text-4xl font-bold tracking-tight lg:text-5xl flex items-center gap-3 group">
+                {post.title}
+                {
+                    user && (user.role === 'admin' || user.role === 'owner') && (
+                        <a
+                            href={`/admin/editor?id=${post.id}`}
+                            class="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                            title="Edit Post"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="w-6 h-6 lg:w-8 lg:h-8"
+                            >
+                                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+                            </svg>
+                        </a>
+                    )
+                }
+            </h1>
             {
                 post.tags && (
                     <div class="flex flex-wrap gap-2 mt-4">

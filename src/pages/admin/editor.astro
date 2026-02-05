@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button.astro';
 import Input from '../../components/ui/Input.astro';
 import Label from '../../components/ui/Label.astro';
 import Select from '../../components/ui/Select.astro';
+import Toast from '../../components/ui/Toast.astro';
 const user = Astro.locals.user;
 if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
     return Astro.redirect('/');
@@ -24,6 +25,7 @@ let post = {
     publishedAt: null,
     tags: '',
 };
+let errorMessage = '';
 const url = new URL(Astro.request.url);
 const id = url.searchParams.get('id');
 if (id) {
@@ -40,21 +42,55 @@ if (Astro.request.method === 'POST') {
     const excerpt = formData.get('excerpt');
     const status = formData.get('status') || 'draft';
     const tags = formData.get('tags');
-    const dateStr = formData.get('publishedAt');
+    const dateRaw = formData.get('date');
+    const timeRaw = formData.get('time');
     let slug = slugRaw ? slugify(slugRaw) : slugify(title);
     const readingTime = calculateReadingTime(content);
-    const publishedAt = dateStr ? new Date(dateStr).getTime() : Date.now();
+
+    let publishedAt = Date.now();
+    if (dateRaw) {
+        const [d, m, y] = dateRaw.toString().split('/');
+        const timeStr = timeRaw ? timeRaw : '00:00';
+        publishedAt = new Date(`${y}-${m}-${d}T${timeStr}`).getTime();
+    }
+
     const now = Date.now();
 
     let existingSlug = await db.select().from(posts).where(eq(posts.slug, slug)).get();
-    if (existingSlug && existingSlug.id !== id) {
-        slug = `${slug}-${generateId(5)}`;
-    }
 
-    if (id) {
-        await db
-            .update(posts)
-            .set({
+    if (existingSlug && existingSlug.id !== id) {
+        errorMessage = `Slug "${slug}" is already in use. Please choose a different one.`;
+
+        post = {
+            id: id || '',
+            title,
+            slug,
+            content,
+            excerpt,
+            status,
+            tags,
+            publishedAt: publishedAt,
+        };
+    } else {
+        if (id) {
+            await db
+                .update(posts)
+                .set({
+                    title,
+                    slug,
+                    content,
+                    excerpt,
+                    status,
+                    tags,
+                    readingTime,
+                    publishedAt,
+                    updatedAt: now,
+                })
+                .where(eq(posts.id, id));
+        } else {
+            const newId = generateId(15);
+            await db.insert(posts).values({
+                id: newId,
                 title,
                 slug,
                 content,
@@ -63,39 +99,27 @@ if (Astro.request.method === 'POST') {
                 tags,
                 readingTime,
                 publishedAt,
+                authorId: user.id,
+                createdAt: now,
                 updatedAt: now,
-            })
-            .where(eq(posts.id, id));
-    } else {
-        const newId = generateId(15);
-        await db.insert(posts).values({
-            id: newId,
-            title,
-            slug,
-            content,
-            excerpt,
-            status,
-            tags,
-            readingTime,
-            publishedAt,
-            authorId: user.id,
-            createdAt: now,
-            updatedAt: now,
-        });
-        return Astro.redirect(`/admin/editor?id=${newId}`);
+            });
+            return Astro.redirect(`/admin/editor?id=${newId}`);
+        }
+        return Astro.redirect('/admin');
     }
-    return Astro.redirect('/admin');
 }
 const now = new Date();
 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-const defaultDate = post.publishedAt
-    ? new Date(post.publishedAt).toISOString().slice(0, 16)
-    : now.toISOString().slice(0, 16);
+const defaultIso = post.publishedAt ? new Date(post.publishedAt).toISOString() : now.toISOString();
+const [y, mon, d] = defaultIso.split('T')[0].split('-');
+const defaultDateVal = `${d}/${mon}/${y}`;
+const defaultTimeVal = defaultIso.split('T')[1].slice(0, 5);
 ---
 
 <Layout title="Editor">
     <Header />
-    <main class="h-[calc(100vh-3.5rem)] flex flex-col">
+    <Toast message={errorMessage} />
+    <main class="h-[calc(100vh-4rem)] flex flex-col">
         <form method="post" class="flex flex-col h-full">
             <div
                 class="border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between bg-white dark:bg-slate-950"
@@ -110,76 +134,257 @@ const defaultDate = post.publishedAt
                         class="text-xl font-bold bg-transparent border-none focus:outline-none focus:ring-0 w-full placeholder:text-slate-400"
                         oninput="document.getElementById('slug').value = this.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')"
                     />
-                    <Button type="submit"> Save </Button>
+                    <div class="flex items-center gap-2">
+                        <input type="file" id="upload-md" accept=".md,.mdx" class="hidden" />
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            id="upload-btn"
+                            title="Import Markdown"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                ></path><polyline points="17 8 12 3 7 8"></polyline><line
+                                    x1="12"
+                                    x2="12"
+                                    y1="3"
+                                    y2="15"></line></svg
+                            >
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            id="export-btn"
+                            title="Export Markdown"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                ><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                                ></path><polyline points="7 10 12 15 17 10"></polyline><line
+                                    x1="12"
+                                    x2="12"
+                                    y1="15"
+                                    y2="3"></line></svg
+                            >
+                        </Button>
+                        <Button type="submit"> Save </Button>
+                        <a href="/admin">
+                            <Button type="button" variant="outline" title="Back to Dashboard">
+                                <span class="hidden sm:inline">Back</span>
+                                <span class="sm:hidden">
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        ><path d="m15 18-6-6 6-6"></path></svg
+                                    >
+                                </span>
+                            </Button>
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="flex-1 flex overflow-hidden">
-                <div class="w-1/2 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+            <div class="flex-1 flex overflow-hidden" id="editor-container">
+                <div
+                    class="relative flex flex-col min-w-[300px]"
+                    style="width: 50%"
+                    id="editor-pane"
+                >
                     <textarea
                         name="content"
                         id="markdown-input"
-                        class="flex-1 w-full h-full p-4 resize-none bg-transparent focus:outline-none font-mono text-sm"
+                        class="flex-1 w-full p-4 resize-none bg-transparent focus:outline-none font-mono text-sm"
                         placeholder="Write markdown content here..."
                         required>{post.content}</textarea
                     >
+
                     <div
-                        class="border-t border-slate-200 dark:border-slate-800 p-3 space-y-1 bg-slate-50 dark:bg-slate-900/50"
+                        class="relative h-px bg-slate-200 dark:bg-slate-800 cursor-row-resize z-20 shrink-0"
+                        id="vertical-resizer"
                     >
-                        <div>
-                            <Label for="slug" class="text-xs">Slug</Label>
-                            <Input
-                                type="text"
-                                id="slug"
-                                name="slug"
-                                value={post.slug}
-                                class="h-7 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <Label for="excerpt" class="text-xs">Excerpt</Label>
-                            <textarea
-                                name="excerpt"
-                                id="excerpt"
-                                rows="2"
-                                class="flex w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400"
-                                >{post.excerpt}</textarea
+                        <div class="absolute h-4 w-full -top-1.5 -bottom-1.5 z-10"></div>
+                        <div
+                            class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-4 w-8 items-center justify-center rounded-sm border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"
+                        >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="10"
+                                height="10"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="text-slate-500"
+                                ><path d="M17 9H7"></path><path d="M17 15H7"></path></svg
                             >
                         </div>
-                        <div>
-                            <Label for="tags" class="text-xs">Tags (comma separated)</Label>
-                            <Input
-                                type="text"
-                                id="tags"
-                                name="tags"
-                                value={post.tags}
-                                class="h-7 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <Label for="publishedAt" class="text-xs">Publish Date</Label>
-                            <Input
-                                type="datetime-local"
-                                id="publishedAt"
-                                name="publishedAt"
-                                value={defaultDate}
-                                class="h-8 text-xs"
-                            />
-                        </div>
-                        <div>
-                            <Label for="status" class="text-xs">Status</Label>
-                            <Select name="status" id="status" class="h-8 py-1 text-xs">
-                                <option value="draft" selected={post.status === 'draft'}
-                                    >Draft</option
+                    </div>
+
+                    <div
+                        class="bg-slate-50 dark:bg-slate-900/50 flex flex-col"
+                        id="settings-panel"
+                        style="height: 300px"
+                    >
+                        <div
+                            class="relative flex items-center justify-start gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800 cursor-pointer select-none text-slate-500 dark:text-slate-400"
+                            id="settings-toggle"
+                        >
+                            <div
+                                class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex h-4 w-8 items-center justify-center rounded-sm border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950 opacity-0 transition-opacity group-hover:opacity-100 cursor-row-resize"
+                                id="collapse-handle"
+                            >
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="10"
+                                    height="10"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    class="text-slate-500"
+                                    ><path d="M17 9H7"></path><path d="M17 15H7"></path></svg
                                 >
-                                <option value="published" selected={post.status === 'published'}
-                                    >Published</option
+                            </div>
+
+                            <span class="text-xs font-medium uppercase tracking-wider"
+                                >Post Settings</span
+                            >
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="transition-transform"
+                                id="settings-chevron"><path d="m6 9 6 6 6-6"></path></svg
+                            >
+                        </div>
+                        <div class="p-3 space-y-1 overflow-y-auto flex-1" id="settings-content">
+                            <div>
+                                <Label for="slug" class="text-xs">Slug</Label>
+                                <Input
+                                    type="text"
+                                    id="slug"
+                                    name="slug"
+                                    value={post.slug}
+                                    class="h-7 text-xs"
+                                />
+                            </div>
+                            <div>
+                                <Label for="excerpt" class="text-xs">Excerpt</Label>
+                                <textarea
+                                    name="excerpt"
+                                    id="excerpt"
+                                    rows="2"
+                                    class="flex w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:ring-offset-slate-950 dark:placeholder:text-slate-400"
+                                    >{post.excerpt}</textarea
                                 >
-                            </Select>
+                            </div>
+                            <div>
+                                <Label for="tags" class="text-xs">Tags (comma separated)</Label>
+                                <Input
+                                    type="text"
+                                    id="tags"
+                                    name="tags"
+                                    value={post.tags}
+                                    class="h-7 text-xs"
+                                />
+                            </div>
+                            <div>
+                                <Label for="publishedAt" class="text-xs">Publish Date</Label>
+                                <div class="flex gap-2 items-center">
+                                    <Input
+                                        type="text"
+                                        name="date"
+                                        id="date"
+                                        value={defaultDateVal}
+                                        placeholder="DD/MM/YYYY"
+                                        class="flex-1 h-7 text-xs py-1"
+                                    />
+                                    <Input
+                                        type="text"
+                                        name="time"
+                                        id="time"
+                                        value={defaultTimeVal}
+                                        placeholder="HH:MM"
+                                        class="w-32 h-7 text-xs py-1"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <Label for="status" class="text-xs">Status</Label>
+                                <Select name="status" id="status" class="h-8 py-1 text-xs">
+                                    <option value="draft" selected={post.status === 'draft'}
+                                        >Draft</option
+                                    >
+                                    <option value="published" selected={post.status === 'published'}
+                                        >Published</option
+                                    >
+                                </Select>
+                            </div>
                         </div>
                     </div>
                 </div>
+
                 <div
-                    class="w-1/2 overflow-auto bg-white dark:bg-slate-950 p-8 prose prose-slate dark:prose-invert max-w-none"
+                    class="relative w-px bg-slate-200 dark:bg-slate-800 cursor-col-resize z-20 shrink-0 h-full"
+                    id="horizontal-resizer"
+                >
+                    <div class="absolute w-4 h-full -left-1.5 -right-1.5 z-10"></div>
+                    <div
+                        class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 flex h-8 w-4 items-center justify-center rounded-sm border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="text-slate-500"
+                            ><path d="M9 17V7"></path><path d="M15 17V7"></path></svg
+                        >
+                    </div>
+                </div>
+
+                <div
+                    class="flex-1 overflow-auto bg-white dark:bg-slate-950 p-8 prose prose-slate dark:prose-invert max-w-none min-w-[300px]"
                     id="preview"
                 >
                 </div>
@@ -187,15 +392,340 @@ const defaultDate = post.publishedAt
         </form>
     </main>
 </Layout>
+<script is:inline>
+    window.restoreEditorLayout = function () {
+        try {
+            const savedWidth = localStorage.getItem('miniblog-editor-width');
+            const savedHeight = localStorage.getItem('miniblog-settings-height');
+            const savedCollapsed = localStorage.getItem('miniblog-settings-collapsed') === 'true';
+
+            const editorPane = document.getElementById('editor-pane');
+            const settingsPanel = document.getElementById('settings-panel');
+            const settingsContent = document.getElementById('settings-content');
+            const settingsToggle = document.getElementById('settings-toggle');
+            const vResizer = document.getElementById('vertical-resizer');
+            const chevron = document.getElementById('settings-chevron');
+            const handle = document.getElementById('collapse-handle');
+
+            if (editorPane && savedWidth) editorPane.style.width = savedWidth;
+
+            if (settingsPanel && savedCollapsed) {
+                settingsPanel.style.height = 'auto';
+                settingsPanel.style.width = '100%';
+                settingsPanel.style.position = 'absolute';
+                settingsPanel.style.bottom = '0';
+                settingsPanel.style.left = '0';
+                settingsPanel.classList.add(
+                    'border-t',
+                    'border-slate-200',
+                    'dark:border-slate-800',
+                    'z-40',
+                );
+
+                if (settingsContent) settingsContent.style.display = 'none';
+                if (vResizer) vResizer.style.display = 'none';
+
+                if (settingsToggle) {
+                    settingsToggle.classList.remove('border-b');
+                    settingsToggle.classList.add('px-4', 'py-3');
+                }
+                if (chevron) chevron.style.transform = 'rotate(180deg)';
+                if (handle) {
+                    handle.style.opacity = '1';
+                    handle.classList.remove('opacity-0');
+                }
+            } else if (settingsPanel && savedHeight) {
+                settingsPanel.style.height = savedHeight;
+            }
+        } catch {
+            void 0;
+        }
+    };
+
+    window.restoreEditorLayout();
+
+    document.addEventListener('astro:after-swap', window.restoreEditorLayout);
+</script>
 <script>
     import markdownit from 'markdown-it';
-    const md = markdownit();
-    const input = document.getElementById('markdown-input');
-    const preview = document.getElementById('preview');
-    function update() {
-        if (!input || !preview) return;
-        preview.innerHTML = md.render(input.value);
-    }
-    input?.addEventListener('input', update);
-    update();
+
+    document.addEventListener('astro:page-load', () => {
+        const md = markdownit();
+        const input = document.getElementById('markdown-input');
+        const preview = document.getElementById('preview');
+
+        function update() {
+            if (!input || !preview) return;
+            preview.innerHTML = md.render(input.value);
+        }
+        input?.addEventListener('input', update);
+        update();
+
+        const editorContainer = document.getElementById('editor-container');
+        const editorPane = document.getElementById('editor-pane');
+        const settingsPanel = document.getElementById('settings-panel');
+        const hResizer = document.getElementById('horizontal-resizer');
+        const vResizer = document.getElementById('vertical-resizer');
+        const settingsToggle = document.getElementById('settings-toggle');
+        const settingsContent = document.getElementById('settings-content');
+        const settingsChevron = document.getElementById('settings-chevron');
+
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadInput = document.getElementById('upload-md');
+        const exportBtn = document.getElementById('export-btn');
+        const titleInput = document.querySelector('input[name="title"]');
+
+        uploadBtn?.addEventListener('click', () => {
+            uploadInput?.click();
+        });
+
+        uploadInput?.addEventListener('change', (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const content = e.target?.result;
+                if (typeof content === 'string' && input) {
+                    input.value = content;
+
+                    const event = new Event('input', { bubbles: true });
+                    input.dispatchEvent(event);
+                }
+            };
+            reader.readAsText(file);
+
+            e.target.value = '';
+        });
+
+        exportBtn?.addEventListener('click', () => {
+            if (!input) return;
+
+            const title = titleInput?.value || '';
+            const slug = document.getElementById('slug')?.value || '';
+            const excerpt = document.getElementById('excerpt')?.value || '';
+            const tags = document.getElementById('tags')?.value || '';
+
+            const dateVal = document.getElementById('date')?.value || '';
+            const timeVal = document.getElementById('time')?.value || '';
+
+            let publishedAt = '';
+            if (dateVal) {
+                const [d, m, y] = dateVal.split('/');
+                publishedAt = `${y}-${m}-${d}T${timeVal}`;
+            }
+
+            const status = document.getElementById('status')?.value || 'draft';
+
+            const frontmatter = [
+                '---',
+                `title: "${title.replace(/"/g, '\\"')}"`,
+                `slug: "${slug}"`,
+                `excerpt: "${excerpt.replace(/"/g, '\\"')}"`,
+                `tags: "${tags}"`,
+                `publishedAt: "${publishedAt}"`,
+                `status: "${status}"`,
+                '---',
+                '',
+                '',
+            ].join('\n');
+
+            const content = frontmatter + input.value;
+            const filename = title
+                ? `${title
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, '-')
+                      .replace(/(^-|-$)+/g, '')}.md`
+                : 'post.md';
+
+            const blob = new Blob([content], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        let isHResizing = false;
+        hResizer?.addEventListener('mousedown', () => {
+            isHResizing = true;
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isHResizing && editorPane && editorContainer) {
+                const containerRect = editorContainer.getBoundingClientRect();
+                const newWidth = e.clientX - containerRect.left;
+
+                if (newWidth > 200 && newWidth < containerRect.width - 200) {
+                    editorPane.style.width = `${newWidth}px`;
+                }
+            }
+        });
+
+        let isVResizing = false;
+        let isExpandingFromCollapse = false;
+
+        vResizer?.addEventListener('mousedown', () => {
+            isVResizing = true;
+            document.body.style.cursor = 'row-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isVResizing && settingsPanel && editorPane) {
+                const paneRect = editorPane.getBoundingClientRect();
+
+                const rawHeight = paneRect.bottom - e.clientY;
+
+                if (rawHeight < 50) {
+                    if (isExpandingFromCollapse) {
+                        settingsPanel.style.height = '36px';
+                        return;
+                    }
+
+                    isVResizing = false;
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    setSettingsState(true);
+                    return;
+                }
+
+                if (rawHeight >= 50) {
+                    isExpandingFromCollapse = false;
+                }
+
+                const maxHeight = settingsContent.scrollHeight + settingsToggle.offsetHeight;
+                const minHeight = 36;
+
+                const clampedHeight = Math.min(Math.max(rawHeight, minHeight), maxHeight);
+
+                settingsPanel.style.height = `${clampedHeight}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isHResizing && editorPane) {
+                localStorage.setItem('miniblog-editor-width', editorPane.style.width);
+            }
+            if (isVResizing && settingsPanel) {
+                localStorage.setItem('miniblog-settings-height', settingsPanel.style.height);
+            }
+            isHResizing = false;
+            isVResizing = false;
+            isExpandingFromCollapse = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        });
+
+        let isSettingsCollapsed = false;
+        let preCollapseHeight = '300px';
+
+        function setSettingsState(collapsed, skipHeightRestore = false) {
+            isSettingsCollapsed = collapsed;
+            localStorage.setItem('miniblog-settings-collapsed', collapsed);
+
+            if (isSettingsCollapsed) {
+                if (settingsPanel.style.height !== 'auto' && !skipHeightRestore) {
+                    preCollapseHeight = settingsPanel.style.height;
+                }
+
+                settingsPanel.style.height = 'auto';
+                settingsPanel.style.width = '100%';
+                settingsPanel.style.position = 'absolute';
+                settingsPanel.style.bottom = '0';
+                settingsPanel.style.left = '0';
+                settingsPanel.classList.add(
+                    'border-t',
+                    'border-slate-200',
+                    'dark:border-slate-800',
+                    'z-40',
+                );
+
+                settingsToggle.classList.remove('border-b');
+
+                const handle = document.getElementById('collapse-handle');
+                if (handle) {
+                    handle.style.opacity = '1';
+                    handle.classList.remove('opacity-0');
+                }
+
+                settingsContent.style.display = 'none';
+                vResizer.style.display = 'none';
+                settingsChevron.style.transform = 'rotate(180deg)';
+            } else {
+                if (!skipHeightRestore) {
+                    settingsPanel.style.height = preCollapseHeight;
+                } else {
+                    settingsPanel.style.height = `${settingsToggle.offsetHeight}px`;
+                }
+                settingsPanel.style.width = '100%';
+                settingsPanel.style.position = 'static';
+                settingsPanel.classList.remove(
+                    'border-t',
+                    'border-slate-200',
+                    'dark:border-slate-800',
+                    'z-40',
+                );
+
+                settingsToggle.classList.add('border-b');
+
+                const handle = document.getElementById('collapse-handle');
+                if (handle) {
+                    handle.style.opacity = '0';
+                    handle.classList.add('opacity-0');
+                }
+
+                settingsContent.style.display = 'block';
+                vResizer.style.display = 'block';
+                settingsChevron.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        settingsToggle?.addEventListener('mousedown', (e) => {
+            const startY = e.clientY;
+            let isDragging = false;
+
+            const onMouseMove = (moveEvent) => {
+                if (!isDragging && Math.abs(startY - moveEvent.clientY) > 5) {
+                    isDragging = true;
+
+                    if (isSettingsCollapsed) {
+                        setSettingsState(false, true);
+                        isExpandingFromCollapse = true;
+                    }
+
+                    isVResizing = true;
+                    document.body.style.cursor = 'row-resize';
+                    document.body.style.userSelect = 'none';
+                }
+            };
+            const onMouseUp = () => {
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+
+                if (!isDragging) {
+                    setSettingsState(!isSettingsCollapsed);
+                }
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+
+        const savedHeight = localStorage.getItem('miniblog-settings-height');
+        const savedCollapsed = localStorage.getItem('miniblog-settings-collapsed') === 'true';
+
+        if (savedCollapsed) {
+            setSettingsState(true, true);
+        } else {
+            if (savedHeight && settingsPanel) {
+                settingsPanel.style.height = savedHeight;
+            }
+        }
+    });
 </script>

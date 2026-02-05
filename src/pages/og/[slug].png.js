@@ -4,13 +4,18 @@ import { eq } from 'drizzle-orm';
 import satori from 'satori';
 import sharp from 'sharp';
 
-async function getFont() {
-    const response = await fetch(
-        'https://github.com/google/fonts/raw/main/apache/robotoslab/RobotoSlab-Bold.ttf',
+async function getFonts() {
+    const weights = [400, 500, 600, 700];
+    const responses = await Promise.all(
+        weights.map((weight) =>
+            fetch(
+                `https://cdn.jsdelivr.net/npm/@fontsource/jost/files/jost-latin-${weight}-normal.woff`,
+            ).then((res) => res.arrayBuffer().then((data) => ({ weight, data }))),
+        ),
     );
-    return await response.arrayBuffer();
+    return responses;
 }
-const fontData = await getFont();
+const fontsData = await getFonts();
 export async function GET({ params }) {
     const { slug } = params;
     const post = await db
@@ -75,13 +80,12 @@ export async function GET({ params }) {
         {
             width: 1200,
             height: 630,
-            fonts: [
-                {
-                    name: 'Roboto Slab',
-                    data: fontData,
-                    style: 'normal',
-                },
-            ],
+            fonts: fontsData.map(({ weight, data }) => ({
+                name: 'Jost',
+                data,
+                weight,
+                style: 'normal',
+            })),
         },
     );
     const png = await sharp(Buffer.from(svg)).png().toBuffer();

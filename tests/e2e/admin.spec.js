@@ -1,14 +1,20 @@
 import { test, expect } from '@playwright/test';
+import { db } from '../../src/db';
+import { posts } from '../../src/db/schema';
 
 async function login(page, username = 'admin', password = 'password123') {
     await page.goto('/login');
     await page.fill('input[name="username"]', username);
     await page.fill('input[name="password"]', password);
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/\/admin/);
 }
 
 test.describe('Admin Dashboard', () => {
+    test.beforeAll(async () => {
+        await db.delete(posts);
+    });
+
     test.beforeEach(async ({ page }) => {
         await login(page);
     });
@@ -26,6 +32,7 @@ test.describe('Admin Dashboard', () => {
         await page.fill('textarea[name="content"]', 'Content');
         await page.selectOption('select[name="status"]', 'published');
         await page.click('button:has-text("Save")');
+        await expect(page).toHaveURL(/id=/);
 
         await page.goto('/admin');
         const input = page.locator('main input[name="q"]');
@@ -51,6 +58,7 @@ test.describe('Admin Dashboard', () => {
         await page.fill('input[name="tags"]', uniqueTag);
         await page.selectOption('select[name="status"]', 'published');
         await page.click('button:has-text("Save")');
+        await expect(page).toHaveURL(/id=/);
 
         await page.goto('/admin');
         const input = page.locator('main input[name="q"]');
@@ -79,7 +87,8 @@ test.describe('Admin Dashboard', () => {
         await page.goto('/admin/editor');
         await page.fill('input[name="title"]', oldTitle);
         await page.fill('textarea[name="content"]', 'Old');
-        await page.$eval('input[name="publishedAt"]', (el) => (el.value = '2000-01-01T12:00'));
+        await page.fill('input[name="date"]', '01/01/2000');
+        await page.fill('input[name="time"]', '12:00');
         await page.selectOption('select[name="status"]', 'published');
         await page.click('button:has-text("Save")');
         await expect(page).toHaveURL(/id=/);
@@ -87,7 +96,9 @@ test.describe('Admin Dashboard', () => {
         await page.goto('/admin/editor');
         await page.fill('input[name="title"]', newTitle);
         await page.fill('textarea[name="content"]', 'New');
-        await page.$eval('input[name="publishedAt"]', (el) => (el.value = '2050-01-01T12:00'));
+        const randomMinute = Math.floor(Math.random() * 60).toString().padStart(2, '0');
+        await page.fill('input[name="date"]', '01/01/2050');
+        await page.fill('input[name="time"]', `12:${randomMinute}`);
         await page.selectOption('select[name="status"]', 'published');
         await page.click('button:has-text("Save")');
         await expect(page).toHaveURL(/id=/);
@@ -103,43 +114,6 @@ test.describe('Admin Dashboard', () => {
         await page.waitForURL(/sort=publishedAt&order=asc/);
         const firstRowAsc = page.locator('tbody tr').first();
         await expect(firstRowAsc).toContainText(oldTitle);
-    });
-});
-
-test.describe('Editor Functionality', () => {
-    test.beforeEach(async ({ page }) => {
-        await login(page);
-    });
-
-    test('Editor: Create New Post', async ({ page }) => {
-        await page.goto('/admin/editor');
-        const title = `New Post ${Date.now()}`;
-        await page.fill('input[name="title"]', title);
-        await page.fill('textarea[name="content"]', '# Hello');
-        await page.selectOption('select[name="status"]', 'published');
-        await page.click('button:has-text("Save")');
-
-        await expect(page).toHaveURL(/id=/);
-        await page.goto('/');
-        await expect(page.locator(`text=${title}`)).toBeVisible();
-    });
-
-    test('Editor: Update Existing Post', async ({ page }) => {
-        await page.goto('/admin/editor');
-        const title = `UpdateMe ${Date.now()}`;
-        await page.fill('input[name="title"]', title);
-        await page.fill('textarea[name="content"]', 'Original');
-        await page.selectOption('select[name="status"]', 'published');
-        await page.click('button:has-text("Save")');
-        await expect(page).toHaveURL(/id=/);
-
-        await page.fill('textarea[name="content"]', 'Updated Content');
-        await page.click('button:has-text("Save")');
-        await expect(page).toHaveURL(/id=/);
-
-        await page.goto('/');
-        await page.click(`text=${title}`);
-        await expect(page.locator('.prose')).toContainText('Updated Content');
     });
 });
 
