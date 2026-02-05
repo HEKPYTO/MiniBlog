@@ -31,15 +31,16 @@ test.describe('UI Components', () => {
         const username = await setupOwner(page);
         await page.goto('/admin/users');
 
-                                        const row = page.locator('tr', { hasText: username });
+        const row = page.locator('tr', { hasText: username });
 
-                                        await expect(row).toBeVisible();
+        await expect(row).toBeVisible();
 
-                                        const badge = row.locator('td').nth(1).locator('div');
+        const badge = row.locator('td').nth(1).locator('div');
 
-                                        await expect(badge).toBeVisible();
+        await expect(badge).toBeVisible();
 
-                        await expect(badge).toHaveClass(/bg-red-500/);    });
+        await expect(badge).toHaveClass(/bg-red-500/);
+    });
 
     test('Button: Variants and States', async ({ page }) => {
         await setupOwner(page);

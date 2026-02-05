@@ -84,6 +84,6 @@ test.describe('Authentication', () => {
         await expect(page.locator('text=Login')).toBeVisible();
 
         const response = await page.goto('/admin');
-        expect(response.url()).toMatch(/http:\/\/(localhost|127\.0\.0\.1):4321\//);
+        expect(response.url()).toMatch(new RegExp('http://(localhost|127\\.0\\.0\\.1):4321/'));
     });
 });

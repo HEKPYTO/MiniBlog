@@ -96,7 +96,9 @@ test.describe('Admin Dashboard', () => {
         await page.goto('/admin/editor');
         await page.fill('input[name="title"]', newTitle);
         await page.fill('textarea[name="content"]', 'New');
-        const randomMinute = Math.floor(Math.random() * 60).toString().padStart(2, '0');
+        const randomMinute = Math.floor(Math.random() * 60)
+            .toString()
+            .padStart(2, '0');
         await page.fill('input[name="date"]', '01/01/2050');
         await page.fill('input[name="time"]', `12:${randomMinute}`);
         await page.selectOption('select[name="status"]', 'published');

@@ -267,7 +267,11 @@ test.describe('Editor Functionality Suite', () => {
 
         await expect(page).toHaveURL(/id=/);
 
-        const post = await db.select().from(posts).where(eq(posts.title, 'Date Time Input Test')).get();
+        const post = await db
+            .select()
+            .from(posts)
+            .where(eq(posts.title, 'Date Time Input Test'))
+            .get();
         expect(post).toBeTruthy();
         const savedDate = new Date(post.publishedAt);
         expect(savedDate.getDate()).toBe(15);
