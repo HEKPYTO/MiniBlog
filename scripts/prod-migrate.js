@@ -16,6 +16,18 @@ if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
 
+if (!fs.existsSync(dbPath)) {
+    console.log(`[Migration] Creating database file: ${dbPath}`);
+    try {
+        fs.writeFileSync(dbPath, '');
+    } catch (e) {
+        console.error(
+            `[Migration] Failed to create database file at ${dbPath}. Check directory permissions.`,
+        );
+        throw e;
+    }
+}
+
 try {
     const db = drizzle({ connection: { url: 'file:' + dbPath } });
 
