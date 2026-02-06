@@ -11,10 +11,17 @@ import Badge from '../../components/ui/Badge.astro';
 import Input from '../../components/ui/Input.astro';
 import Label from '../../components/ui/Label.astro';
 import Select from '../../components/ui/Select.astro';
+
 const user = Astro.locals.user;
-if (!user || user.role !== 'owner') {
-    return Astro.redirect('/');
+
+if (!user) {
+    return Astro.redirect('/login');
 }
+
+if (user.role !== 'owner') {
+    return Astro.redirect('/admin');
+}
+
 let message = '';
 let messageType = 'success';
 if (Astro.request.method === 'POST') {
@@ -25,10 +32,15 @@ if (Astro.request.method === 'POST') {
             const username = formData.get('username');
             const password = formData.get('password');
             const role = formData.get('role');
-            if (typeof username !== 'string' || username.length < 3)
-                throw new Error('Invalid username');
-            if (typeof password !== 'string' || password.length < 8)
-                throw new Error('Invalid password (min 8 chars)');
+            if (
+                typeof username !== 'string' ||
+                username.length < 5 ||
+                username.length > 31 ||
+                !/^[a-zA-Z0-9_-]+$/.test(username)
+            )
+                throw new Error('Invalid username: 5-31 chars, alphanumeric, underscore, hyphen');
+            if (typeof password !== 'string' || password.length < 8 || password.length > 255)
+                throw new Error('Invalid password: 8-255 chars');
             if (!['user', 'admin', 'owner'].includes(role)) throw new Error('Invalid role');
             const existing = await db
                 .select()
@@ -89,12 +101,12 @@ if (roleFilter && ['user', 'admin', 'owner'].includes(roleFilter)) {
     filters.push(eq(users.role, roleFilter));
 }
 
-const allUsers = await db
-    .select()
-    .from(users)
-    .where(and(...filters))
-    .orderBy(orderBy)
-    .all();
+let query = db.select().from(users);
+if (filters.length > 0) {
+    query = query.where(and(...filters));
+}
+
+const allUsers = await query.orderBy(orderBy).all();
 
 function getSortLink(column) {
     const params = new URLSearchParams(url.searchParams);
@@ -179,7 +191,7 @@ function getSortLink(column) {
                         <input type="hidden" name="action" value="create" />
                         <div class="space-y-2">
                             <Label for="username">Username</Label>
-                            <Input name="username" id="username" required minlength="3" />
+                            <Input name="username" id="username" required minlength="5" />
                         </div>
                         <div class="space-y-2">
                             <Label for="password">Password</Label>

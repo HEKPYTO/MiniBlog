@@ -18,18 +18,19 @@ test.describe('UI Components', () => {
             createdAt: Date.now(),
         });
 
-        await page.goto('/login');
-        await page.fill('input[name="username"]', username);
-        await page.fill('input[name="password"]', password);
-        await page.click('button[type="submit"]');
-        await expect(page).toHaveURL(/\/admin/);
+        const response = await page.request.post('/api/test-login', {
+            form: { username },
+            headers: { Origin: 'http://127.0.0.1:4321' },
+        });
+        expect(response.status()).toBe(200);
+        await page.goto('http://127.0.0.1:4321/');
 
         return username;
     }
 
     test('Badge: Variants render correctly', async ({ page }) => {
         const username = await setupOwner(page);
-        await page.goto('/admin/users');
+        await page.goto('http://127.0.0.1:4321/admin/users');
 
         const row = page.locator('tr', { hasText: username });
 
@@ -44,7 +45,7 @@ test.describe('UI Components', () => {
 
     test('Button: Variants and States', async ({ page }) => {
         await setupOwner(page);
-        await page.goto('/admin/users');
+        await page.goto('http://127.0.0.1:4321/admin/users');
 
         const createBtn = page.locator('button:has-text("Create User")');
         await expect(createBtn).toHaveClass(/bg-slate-900/);

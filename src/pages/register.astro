@@ -16,11 +16,11 @@ if (Astro.request.method === 'POST') {
     const password = formData.get('password');
     if (
         typeof username !== 'string' ||
-        username.length < 3 ||
+        username.length < 5 ||
         username.length > 31 ||
         !/^[a-zA-Z0-9_-]+$/.test(username)
     ) {
-        errorMessage = 'Invalid username: 3-31 chars, alphanumeric, underscore, hyphen';
+        errorMessage = 'Invalid username: 5-31 chars, alphanumeric, underscore, hyphen';
     } else if (typeof password !== 'string' || password.length < 8 || password.length > 255) {
         errorMessage = 'Password must be at least 8 characters';
     } else {
@@ -76,8 +76,6 @@ if (Astro.request.method === 'POST') {
                         type="password"
                         required
                         minlength="8"
-                        pattern="(?=.*[!@#$%^&*()_+\-=\[\]{};':\\x22\\\\|,.<>/?]).{8,}"
-                        title="Must be at least 8 characters and contain at least one special symbol"
                         maxlength="255"
                     />
                 </div>

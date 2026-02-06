@@ -1,12 +1,19 @@
 services:
   miniblog:
     build: .
+    image: miniblog:latest
+    container_name: miniblog
     ports:
       - "4321:4321"
     volumes:
-      - ./data:/app/data
+      - miniblog_data:/app/data
     environment:
-      - DATABASE_URL=file:/app/data/miniblog.db
-      - BETTER_AUTH_SECRET=changeme
+      - NODE_ENV=production
+      - DB_FILENAME=data/miniblog.db
+      - HOST=0.0.0.0
+      - PORT=4321
       - ORIGIN=http://localhost:4321
     restart: unless-stopped
+
+volumes:
+  miniblog_data:

@@ -1,37 +1,40 @@
-# Use Bun image
-FROM oven/bun:1 AS base
-
-# Install dependencies
+FROM oven/bun:1 AS build
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
 COPY package.json bun.lockb ./
 RUN bun install
-
-# Copy source
 COPY . .
-
-# Build Astro
 RUN bun run build
 
-# Production image
-FROM oven/bun:1 AS release
+FROM node:22 AS prod-deps
 WORKDIR /app
 
-# Copy built assets
-COPY --from=base /app/dist ./dist
-COPY --from=base /app/node_modules ./node_modules
-COPY --from=base /app/package.json ./package.json
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 
-# Copy Drizzle migrations if needed to run at start
-COPY --from=base /app/drizzle ./drizzle
-COPY --from=base /app/scripts ./scripts
+COPY package.json ./
+RUN npm pkg delete scripts.prepare
+RUN npm install --omit=dev
 
-# Expose port
-EXPOSE 4321
+FROM node:22-slim AS release
+WORKDIR /app
 
-# Environment variables
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/drizzle.config.js ./drizzle.config.js
+
+COPY --from=prod-deps /app/node_modules ./node_modules
+COPY --from=prod-deps /app/package.json ./package.json
+
+RUN mkdir data && chown 1000:1000 data
+
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV NODE_ENV=production
+ENV DB_FILENAME=data/miniblog.db
 
-# Run the server (Astro Node adapter standalone)
-CMD ["bun", "./dist/server/entry.mjs"]
+USER node
+
+EXPOSE 4321
+CMD ["npm", "run", "start"]

@@ -4,7 +4,7 @@ import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   output: 'server',
-  site: 'http://localhost:4321',
+  site: 'https://miniblog.tsunyanapat.com',
   adapter: node({
     mode: 'standalone',
   }),

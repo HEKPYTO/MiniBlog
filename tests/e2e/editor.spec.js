@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import { generateId } from 'lucia';
 import fs from 'fs';
 import path from 'path';
+import { Bcrypt } from 'oslo/password';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -13,16 +14,26 @@ test.describe('Editor Functionality Suite', () => {
 
     async function setupUser(page) {
         const uniqueUsername = `adm_${Date.now().toString().slice(-5)}_${Math.random().toString(36).slice(2, 5)}`;
+        const passwordHash = await new Bcrypt().hash(testPassword);
 
-        await page.goto('/register');
-        await page.fill('input[name="username"]', uniqueUsername);
-        await page.fill('input[name="password"]', testPassword);
-        await page.click('button[type="submit"]');
-        await expect(page).toHaveURL('/');
+        await db.insert(users).values({
+            id: generateId(15),
+            username: uniqueUsername,
+            password_hash: passwordHash,
+            role: 'admin',
+            createdAt: Date.now(),
+        });
 
-        await db.update(users).set({ role: 'admin' }).where(eq(users.username, uniqueUsername));
+        const response = await page.request.post('/api/test-login', {
+            form: { username: uniqueUsername },
+            headers: { Origin: 'http://127.0.0.1:4321' },
+        });
+        expect(response.status()).toBe(200);
 
-        await page.waitForTimeout(1000);
+        await page.goto('http://127.0.0.1:4321/'); // Trigger cookie load
+        await expect(
+            page.locator('button:has-text("Logout"), a:has-text("Logout")').first(),
+        ).toBeVisible();
 
         await page.goto('/admin/editor');
 
@@ -35,7 +46,7 @@ test.describe('Editor Functionality Suite', () => {
         return uniqueUsername;
     }
 
-    test('L1: UI Elements Presence', async ({ page }) => {
+    test('UI Elements Presence', async ({ page }) => {
         await setupUser(page);
 
         await expect(page.locator('input[name="title"]')).toBeVisible();
@@ -46,7 +57,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#settings-panel')).toBeVisible();
     });
 
-    test('L1: Markdown Preview Generation', async ({ page }) => {
+    test('Markdown Preview Generation', async ({ page }) => {
         await setupUser(page);
 
         const editor = page.locator('#markdown-input');
@@ -58,7 +69,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(preview.locator('strong')).toHaveText('Bold Text');
     });
 
-    test('L1: Slug Auto-generation', async ({ page }) => {
+    test('Slug Auto-generation', async ({ page }) => {
         await setupUser(page);
 
         await page.fill('input[name="title"]', 'My Awesome Post!');
@@ -66,7 +77,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#slug')).toHaveValue('my-awesome-post');
     });
 
-    test('L2: Save New Post (Draft)', async ({ page }) => {
+    test('Save New Post (Draft)', async ({ page }) => {
         await setupUser(page);
 
         await page.fill('input[name="title"]', 'Draft Post');
@@ -82,7 +93,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(post.status).toBe('draft');
     });
 
-    test('L2: Update Existing Post', async ({ page }) => {
+    test('Update Existing Post', async ({ page }) => {
         const username = await setupUser(page);
 
         const postId = generateId(15);
@@ -108,7 +119,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#status')).toHaveValue('draft');
     });
 
-    test('L3: Collapse Settings Panel & Persistence', async ({ page }) => {
+    test('Collapse Settings Panel & Persistence', async ({ page }) => {
         await setupUser(page);
 
         const panel = page.locator('#settings-panel');
@@ -147,7 +158,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(expandedBox.height).toBeGreaterThan(150);
     });
 
-    test('L4: Import/Export Roundtrip', async ({ page }) => {
+    test('Import/Export Roundtrip', async ({ page }) => {
         await setupUser(page);
 
         const importContent = '# Roundtrip Test\n\nContent for roundtrip.';
@@ -170,7 +181,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(exportedContent).toContain('title: "Roundtrip Post"');
     });
 
-    test('L4: Vertical Resize (Snap-to-Collapse)', async ({ page }) => {
+    test('Vertical Resize (Snap-to-Collapse)', async ({ page }) => {
         await setupUser(page);
 
         const resizer = page.locator('#vertical-resizer');
@@ -196,7 +207,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(collapsedBox.height).toBeLessThan(60);
     });
 
-    test('L4: Navigation Shortcuts', async ({ page }) => {
+    test('Navigation Shortcuts', async ({ page }) => {
         const username = await setupUser(page);
 
         await page.click('button[title="Back to Dashboard"]');
@@ -224,7 +235,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(page.url()).toContain(postId);
     });
 
-    test('L4: Slug Collision Toast', async ({ page }) => {
+    test('Slug Collision Toast', async ({ page }) => {
         await setupUser(page);
 
         const existingSlug = `collision-target-${Date.now()}`;
@@ -247,7 +258,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(toast).toContainText(`Slug "${existingSlug}" is already in use`);
     });
 
-    test('L4: Date and Time Inputs', async ({ page }) => {
+    test('Date and Time Inputs', async ({ page }) => {
         await setupUser(page);
 
         const dateInput = page.locator('#date');

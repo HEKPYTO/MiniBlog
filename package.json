@@ -12,9 +12,10 @@
         "db:push:dev": "DB_FILENAME=miniblog.dev.db drizzle-kit push",
         "db:push:prod": "DB_FILENAME=miniblog.db drizzle-kit push",
         "db:reset": "rm -f miniblog.db miniblog.dev.db && DB_FILENAME=miniblog.db drizzle-kit push && DB_FILENAME=miniblog.dev.db drizzle-kit push",
+        "start": "bun run db:push:prod && node ./dist/server/entry.mjs",
         "test": "vitest run",
-        "test:e2e": "playwright test",
-        "test:all": "bun run test && bun run test:e2e",
+        "test:e2e": "DB_FILENAME=miniblog.dev.db NODE_ENV=development playwright test",
+        "test:all": "DB_FILENAME=miniblog.dev.db bun run test && bun run test:e2e",
         "lint": "eslint .",
         "format": "prettier --write \"**/*.{js,astro,html,css,json,md}\"",
         "prepare": "husky"

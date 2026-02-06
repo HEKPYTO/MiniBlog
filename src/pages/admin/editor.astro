@@ -12,7 +12,10 @@ import Label from '../../components/ui/Label.astro';
 import Select from '../../components/ui/Select.astro';
 import Toast from '../../components/ui/Toast.astro';
 const user = Astro.locals.user;
-if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+if (!user) {
+    return Astro.redirect('/login');
+}
+if (user.role !== 'admin' && user.role !== 'owner') {
     return Astro.redirect('/');
 }
 let post = {

@@ -2,11 +2,13 @@ import { test, expect } from '@playwright/test';
 import { db } from '../../src/db';
 import { posts } from '../../src/db/schema';
 
-async function login(page, username = 'admin', password = 'password123') {
-    await page.goto('/login');
-    await page.fill('input[name="username"]', username);
-    await page.fill('input[name="password"]', password);
-    await page.click('button[type="submit"]');
+async function login(page, username = 'admin') {
+    const response = await page.request.post('/api/test-login', {
+        form: { username },
+        headers: { Origin: 'http://127.0.0.1:4321' },
+    });
+    expect(response.status()).toBe(200);
+    await page.goto('http://127.0.0.1:4321/admin');
     await expect(page).toHaveURL(/\/admin/);
 }
 
@@ -126,28 +128,39 @@ test.describe('User Management', () => {
 
     test('Users: Create User', async ({ page }) => {
         await page.goto('/admin/users');
+
+        await page.fill('input[name="q"]', '');
+        await page.waitForLoadState('networkidle');
+
         const newUser = `test_${Date.now()}`;
         await page.fill('input[name="username"]', newUser);
         await page.fill('input[name="password"]', 'password123');
-        await page.locator('form[method="post"] select[name="role"]').selectOption('user');
+        await page.selectOption('form[method="post"] select[name="role"]', 'user');
         await page.click('button:has-text("Create User")');
+        await page.waitForLoadState('networkidle');
         await expect(page.locator('tbody')).toContainText(newUser);
     });
 
     test('Users: Search User', async ({ page }) => {
+        await page.goto('/admin/users');
+
+        await page.fill('input[name="q"]', '');
+        await page.waitForLoadState('networkidle');
+
         const userA = `userA_${Date.now()}`;
         const userB = `userB_${Date.now()}`;
 
-        await page.goto('/admin/users');
         await page.fill('input[name="username"]', userA);
         await page.fill('input[name="password"]', 'password123');
-        await page.locator('form[method="post"] select[name="role"]').selectOption('user');
+        await page.selectOption('form[method="post"] select[name="role"]', 'user');
         await page.click('button:has-text("Create User")');
+        await page.waitForLoadState('networkidle');
         await expect(page.locator('tbody')).toContainText(userA);
 
         await page.fill('input[name="username"]', userB);
         await page.fill('input[name="password"]', 'password123');
         await page.click('button:has-text("Create User")');
+        await page.waitForLoadState('networkidle');
         await expect(page.locator('tbody')).toContainText(userB);
 
         const input = page.locator('main input[name="q"]');
@@ -160,11 +173,16 @@ test.describe('User Management', () => {
 
     test('Users: Change Role & Delete', async ({ page }) => {
         await page.goto('/admin/users');
+
+        await page.fill('input[name="q"]', '');
+        await page.waitForLoadState('networkidle');
+
         const user = `mod_${Date.now()}`;
         await page.fill('input[name="username"]', user);
         await page.fill('input[name="password"]', 'password123');
-        await page.locator('form[method="post"] select[name="role"]').selectOption('user');
+        await page.selectOption('form[method="post"] select[name="role"]', 'user');
         await page.click('button:has-text("Create User")');
+        await page.waitForLoadState('networkidle');
         await expect(page.locator('tbody')).toContainText(user);
 
         const row = page.locator('tr', { hasText: user });
