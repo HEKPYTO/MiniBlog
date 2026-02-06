@@ -37,15 +37,6 @@ async function seedOwner() {
 export const onRequest = defineMiddleware(async (context, next) => {
     await seedOwner();
 
-
-
-
-
-
-
-
-
-
     const sessionId = context.cookies.get(lucia.sessionCookieName)?.value ?? null;
 
     if (!sessionId) {

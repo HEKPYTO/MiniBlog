@@ -54,3 +54,4 @@ temp/
 !/README.md
 scripts/
 docker-compose.prod.yml
+.claude

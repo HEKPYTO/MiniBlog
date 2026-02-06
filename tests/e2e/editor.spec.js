@@ -24,23 +24,13 @@ test.describe('Editor Functionality Suite', () => {
             createdAt: Date.now(),
         });
 
-        const response = await page.request.post('/api/test-login', {
-            form: { username: uniqueUsername },
-            headers: { Origin: 'http://127.0.0.1:4321' },
-        });
-        expect(response.status()).toBe(200);
-
-        await page.goto('http://127.0.0.1:4321/'); 
-        await expect(
-            page.locator('button:has-text("Logout"), a:has-text("Logout")').first(),
-        ).toBeVisible();
+        await page.goto('/login');
+        await page.fill('input[name="username"]', uniqueUsername);
+        await page.fill('input[name="password"]', testPassword);
+        await page.click('button[type="submit"]');
+        await page.waitForURL(/\/admin/);
 
         await page.goto('/admin/editor');
-
-        if (page.url().endsWith('/')) {
-            await page.waitForTimeout(500);
-            await page.goto('/admin/editor');
-        }
         await expect(page.locator('#markdown-input')).toBeVisible({ timeout: 10000 });
 
         return uniqueUsername;

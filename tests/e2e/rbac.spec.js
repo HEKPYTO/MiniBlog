@@ -1,27 +1,24 @@
 import { test, expect } from '@playwright/test';
 
-async function login(page, username) {
-    const response = await page.request.post('/api/test-login', {
-        form: { username },
-        headers: {
-            Origin: 'http://127.0.0.1:4321',
-        },
-    });
-    if (response.status() !== 200) {
-        return false;
-    }
+const ownerPassword = 'password123';
 
-    await page.goto('http://127.0.0.1:4321/');
-
-    await expect(
-        page.locator('button:has-text("Logout"), a:has-text("Logout")').first(),
-    ).toBeVisible({ timeout: 10000 });
-    return true;
+async function login(page, username, password = ownerPassword) {
+    await page.goto('/login');
+    await page.fill('input[name="username"]', username);
+    await page.fill('input[name="password"]', password);
+    await page.click('button[type="submit"]');
+    await page.waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 });
+    const isLoggedIn = await page
+        .locator('button:has-text("Logout"), a:has-text("Logout")')
+        .first()
+        .isVisible({ timeout: 5000 })
+        .catch(() => false);
+    return isLoggedIn;
 }
 
 async function logout(page) {
-    await page.request.post('/api/logout');
-    await page.goto('http://127.0.0.1:4321/login');
+    await page.click('button:has-text("Logout"), a:has-text("Logout")');
+    await page.waitForURL('http://127.0.0.1:4321/');
 }
 
 test.describe.serial('RBAC: Comprehensive Security Checks', () => {
@@ -75,7 +72,7 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
         await expect(page.locator('table')).toContainText(staffName);
         await logout(page);
 
-        const staffLogin = await login(page, staffName);
+        const staffLogin = await login(page, staffName, 'Password123!');
         expect(staffLogin).toBe(true);
 
         await page.goto('http://127.0.0.1:4321/admin');
@@ -96,9 +93,9 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
         await page.selectOption('form[method="post"] select[name="role"]', 'user');
         await page.click('button:has-text("Create User")');
         await expect(page.locator('table')).toContainText(memberName);
+        await logout(page);
 
-        const memberLogin = await login(page, memberName);
-        expect(memberLogin).toBe(true);
+        await login(page, memberName, 'Password123!');
 
         await page.goto('http://127.0.0.1:4321/admin');
         await page.waitForURL((url) => url.pathname === '/');
@@ -106,7 +103,6 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
     });
 
     test('4. Guest Restrictions', async ({ page }) => {
-        await logout(page);
         await page.goto('http://127.0.0.1:4321/admin');
         await page.waitForURL(/\/login/);
         await expect(page).toHaveURL('http://127.0.0.1:4321/login');

@@ -3,15 +3,12 @@ import { db } from '../../src/db';
 import { users } from '../../src/db/schema';
 import { eq } from 'drizzle-orm';
 
-async function login(page, username = 'admin') {
-    const response = await page.request.post('/api/test-login', {
-        form: { username },
-        headers: {
-            Origin: 'http://127.0.0.1:4321',
-        },
-    });
-    expect(response.status()).toBe(200);
-    await page.goto('http://127.0.0.1:4321/');
+async function login(page, username = 'admin', password = 'password123') {
+    await page.goto('/login');
+    await page.fill('input[name="username"]', username);
+    await page.fill('input[name="password"]', password);
+    await page.click('button[type="submit"]');
+    await page.waitForURL(/\/admin/);
     await expect(
         page.locator('button:has-text("Logout"), a:has-text("Logout")').first(),
     ).toBeVisible();
@@ -84,7 +81,7 @@ test.describe('Security Audits', () => {
         await page.click('button:has-text("Logout"), a:has-text("Logout")');
         await page.waitForURL('http://127.0.0.1:4321/');
 
-        await login(page, newAdmin);
+        await login(page, newAdmin, 'Password123!');
         await page.goto('/admin/users');
         await page.waitForURL(/\/admin$/);
         expect(page.url()).toContain('/admin');

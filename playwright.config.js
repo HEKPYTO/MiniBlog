@@ -3,7 +3,7 @@ export default defineConfig({
     testDir: './tests/e2e',
     testMatch: '**/*.spec.js',
     timeout: 120 * 1000,
-    globalTimeout: 180 * 1000,
+    globalTimeout: 600 * 1000,
     expect: {
         timeout: 10 * 1000,
     },

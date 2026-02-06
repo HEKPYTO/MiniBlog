@@ -18,12 +18,11 @@ test.describe('UI Components', () => {
             createdAt: Date.now(),
         });
 
-        const response = await page.request.post('/api/test-login', {
-            form: { username },
-            headers: { Origin: 'http://127.0.0.1:4321' },
-        });
-        expect(response.status()).toBe(200);
-        await page.goto('http://127.0.0.1:4321/');
+        await page.goto('/login');
+        await page.fill('input[name="username"]', username);
+        await page.fill('input[name="password"]', password);
+        await page.click('button[type="submit"]');
+        await page.waitForURL(/\/admin/);
 
         return username;
     }
