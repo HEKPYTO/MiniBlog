@@ -1,37 +1,21 @@
 import { test, expect } from '@playwright/test';
-import { db } from '../../src/db';
-import { users } from '../../src/db/schema';
-import { generateId } from 'lucia';
-import { Bcrypt } from 'oslo/password';
 
 test.describe('UI Components', () => {
     async function setupOwner(page) {
-        const username = `comp_owner_${Date.now()}`;
-        const password = 'password123';
-        const passwordHash = await new Bcrypt().hash(password);
-
-        await db.insert(users).values({
-            id: generateId(15),
-            username,
-            password_hash: passwordHash,
-            role: 'owner',
-            createdAt: Date.now(),
-        });
-
         await page.goto('/login');
-        await page.fill('input[name="username"]', username);
-        await page.fill('input[name="password"]', password);
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'password123');
         await page.click('button[type="submit"]');
         await page.waitForURL(/\/admin/);
 
-        return username;
+        return 'admin';
     }
 
     test('Badge: Variants render correctly', async ({ page }) => {
-        const username = await setupOwner(page);
+        await setupOwner(page);
         await page.goto('http://127.0.0.1:4321/admin/users');
 
-        const row = page.locator('tr', { hasText: username });
+        const row = page.locator('tr', { hasText: '(You)' });
 
         await expect(row).toBeVisible();
 

@@ -1,8 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { db } from '../../src/db';
-import { users } from '../../src/db/schema';
-import { generateId } from 'lucia';
-import { Bcrypt } from 'oslo/password';
 
 test.describe('Authentication', () => {
     test('Register: Success Flow', async ({ page }) => {
@@ -55,15 +51,16 @@ test.describe('Authentication', () => {
     test('Login: Redirect Standard User to Homepage', async ({ page }) => {
         const username = `user_redirect_${Date.now()}`;
         const password = 'Password123!';
-        const passwordHash = await new Bcrypt().hash(password);
 
-        await db.insert(users).values({
-            id: generateId(15),
-            username: username,
-            password_hash: passwordHash,
-            role: 'user',
-            createdAt: Date.now(),
-        });
+        await page.goto('/register');
+        await page.fill('input[name="username"]', username);
+        await page.fill('input[name="password"]', password);
+        await page.click('button[type="submit"]');
+        await page.waitForURL('http://127.0.0.1:4321/');
+
+        await page.click('button:has-text("Logout"), a:has-text("Logout")');
+        await page.waitForURL('http://127.0.0.1:4321/');
+        await expect(page.locator('text=Login')).toBeVisible();
 
         await page.goto('/login');
         await page.fill('input[name="username"]', username);

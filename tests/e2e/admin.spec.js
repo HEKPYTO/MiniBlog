@@ -1,6 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { db } from '../../src/db';
-import { posts } from '../../src/db/schema';
 
 async function login(page, username = 'admin', password = 'password123') {
     await page.goto('/login');
@@ -12,10 +10,6 @@ async function login(page, username = 'admin', password = 'password123') {
 }
 
 test.describe('Admin Dashboard', () => {
-    test.beforeAll(async () => {
-        await db.delete(posts);
-    });
-
     test.beforeEach(async ({ page }) => {
         await login(page);
     });
@@ -110,13 +104,34 @@ test.describe('Admin Dashboard', () => {
 
         await page.click('a:has-text("Date")');
         await page.waitForURL(/sort=publishedAt&order=desc/);
-        const firstRow = page.locator('tbody tr').first();
-        await expect(firstRow).toContainText(newTitle);
+        await page.waitForLoadState('networkidle');
+        const rows = page.locator('tbody tr');
+        const newIdx = await rows.evaluateAll(
+            (trs, title) => trs.findIndex((tr) => tr.textContent.includes(title)),
+            newTitle,
+        );
+        const oldIdx = await rows.evaluateAll(
+            (trs, title) => trs.findIndex((tr) => tr.textContent.includes(title)),
+            oldTitle,
+        );
+        expect(newIdx).toBeGreaterThanOrEqual(0);
+        expect(oldIdx).toBeGreaterThanOrEqual(0);
+        expect(newIdx).toBeLessThan(oldIdx);
 
         await page.click('a:has-text("Date")');
         await page.waitForURL(/sort=publishedAt&order=asc/);
-        const firstRowAsc = page.locator('tbody tr').first();
-        await expect(firstRowAsc).toContainText(oldTitle);
+        await page.waitForLoadState('networkidle');
+        const newIdxAsc = await rows.evaluateAll(
+            (trs, title) => trs.findIndex((tr) => tr.textContent.includes(title)),
+            newTitle,
+        );
+        const oldIdxAsc = await rows.evaluateAll(
+            (trs, title) => trs.findIndex((tr) => tr.textContent.includes(title)),
+            oldTitle,
+        );
+        expect(newIdxAsc).toBeGreaterThanOrEqual(0);
+        expect(oldIdxAsc).toBeGreaterThanOrEqual(0);
+        expect(oldIdxAsc).toBeLessThan(newIdxAsc);
     });
 });
 
@@ -203,9 +218,11 @@ test.describe('User Management', () => {
 
         await page.click('a:has-text("Created")');
         await page.waitForURL(/sort=created&order=desc/);
+        await page.waitForLoadState('networkidle');
 
         await page.click('a:has-text("Username")');
         await page.waitForURL(/sort=username&order=desc/);
+        await page.waitForLoadState('networkidle');
 
         await page.click('a:has-text("Role")');
         await page.waitForURL(/sort=role&order=desc/);

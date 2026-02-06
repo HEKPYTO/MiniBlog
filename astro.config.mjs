@@ -16,7 +16,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
     build: {
       rollupOptions: {
-        external: ['better-sqlite3'],
+        external: ['bun:sqlite'],
       },
     },
   },

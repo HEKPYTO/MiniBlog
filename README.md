@@ -6,7 +6,7 @@ A minimal, feature-rich blog built with Astro, Bun, Drizzle, SQLite, and Tailwin
 
 - **Pure Astro** (SSR with Node adapter)
 - **Bun** Runtime & Package Manager
-- **Drizzle ORM** + **SQLite** (Better-SQLite3)
+- **Drizzle ORM** + **SQLite** (Bun built-in)
 - **Lucia Auth v3** (Session management with Bcrypt)
 - **Tailwind CSS v4** (CSS-first config)
 - **UI Components** (Button, Input, Badge, etc.)
@@ -28,24 +28,14 @@ A minimal, feature-rich blog built with Astro, Bun, Drizzle, SQLite, and Tailwin
 
 The project uses separate environment files for production and development to prevent data pollution.
 
-- `.env`: Production configuration (Default)
-- `.env.dev`: Development/Test configuration
-
 Example `.env`:
 
 ```env
-DATABASE_URL=file:miniblog.db
 DB_FILENAME=miniblog.db
-OWNER_CREDENTIALS=admin:$2y$05$mGBNpRfJwgF1I1wNlVlkgON7rdIkOxAH6sF6Pn3FT75RUwCY2Pnqe
+OWNER_CREDENTIALS=admin:$2y$10$...
 HOST=0.0.0.0
 PORT=4321
 NODE_ENV=production
-```
-
-To generate a password hash for `OWNER_CREDENTIALS`:
-
-```bash
-htpasswd -nBb <username> <password>
 ```
 
 ### Installation
@@ -75,7 +65,7 @@ bun dist/server/entry.mjs
 
 ### Testing
 
-Tests run using the `.env.dev` configuration and a separate database.
+Tests run using a separate dev database.
 
 ```bash
 bun run test      # Unit tests

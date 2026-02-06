@@ -29,7 +29,7 @@ export default defineConfig({
     ],
     webServer: {
         command:
-            'rm -f miniblog.dev.db && export DB_FILENAME=miniblog.dev.db && bun run db:push:dev && bun run build && node ./dist/server/entry.mjs',
+            'rm -f miniblog.dev.db && export DB_FILENAME=miniblog.dev.db && bun run db:push:dev && bun run build && bun ./dist/server/entry.mjs',
         url: 'http://127.0.0.1:4321',
         reuseExistingServer: !process.env.CI,
         timeout: 180 * 1000,

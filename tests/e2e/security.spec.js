@@ -1,7 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { db } from '../../src/db';
-import { users } from '../../src/db/schema';
-import { eq } from 'drizzle-orm';
 
 async function login(page, username = 'admin', password = 'password123') {
     await page.goto('/login');
@@ -36,7 +33,7 @@ test.describe('Security Audits', () => {
         await login(page);
 
         await page.goto('/admin/editor');
-        const xssTitle = '<script>alert("Title")</script>';
+        const xssTitle = `<script>alert("Title")</script> ${Date.now()}`;
         await page.fill('input[name="title"]', xssTitle);
         await page.fill('textarea[name="content"]', 'Content');
         await page.selectOption('select[name="status"]', 'published');
@@ -59,8 +56,6 @@ test.describe('Security Audits', () => {
         await page.fill('input[name="password"]', 'Password123!');
         await page.click('button[type="submit"]');
         await page.waitForURL('http://127.0.0.1:4321/');
-
-        await db.update(users).set({ role: 'user' }).where(eq(users.username, user));
 
         await page.goto('/admin');
         await page.waitForURL('http://127.0.0.1:4321/');
@@ -103,8 +98,6 @@ test.describe('Security Audits', () => {
         await page.fill('input[name="password"]', 'Password123!');
         await page.click('button[type="submit"]');
         await page.waitForURL('http://127.0.0.1:4321/');
-
-        await db.update(users).set({ role: 'user' }).where(eq(users.username, attacker));
 
         const response = await page.request.post('/admin/users', {
             form: {

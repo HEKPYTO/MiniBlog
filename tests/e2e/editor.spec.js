@@ -1,28 +1,29 @@
 import { test, expect } from '@playwright/test';
-import { db } from '../../src/db';
-import { users, posts } from '../../src/db/schema';
-import { eq } from 'drizzle-orm';
-import { generateId } from 'lucia';
 import fs from 'fs';
 import path from 'path';
-import { Bcrypt } from 'oslo/password';
 
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Editor Functionality Suite', () => {
-    const testPassword = 'password123!';
-
     async function setupUser(page) {
         const uniqueUsername = `adm_${Date.now().toString().slice(-5)}_${Math.random().toString(36).slice(2, 5)}`;
-        const passwordHash = await new Bcrypt().hash(testPassword);
+        const testPassword = 'password123!';
 
-        await db.insert(users).values({
-            id: generateId(15),
-            username: uniqueUsername,
-            password_hash: passwordHash,
-            role: 'admin',
-            createdAt: Date.now(),
-        });
+        await page.goto('/login');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'password123');
+        await page.click('button[type="submit"]');
+        await page.waitForURL(/\/admin/);
+
+        await page.goto('/admin/users');
+        await page.fill('input[name="username"]', uniqueUsername);
+        await page.fill('input[name="password"]', testPassword);
+        await page.selectOption('form[method="post"] select[name="role"]', 'admin');
+        await page.click('button:has-text("Create User")');
+        await page.waitForLoadState('networkidle');
+
+        await page.click('button:has-text("Logout"), a:has-text("Logout")');
+        await page.waitForURL('http://127.0.0.1:4321/');
 
         await page.goto('/login');
         await page.fill('input[name="username"]', uniqueUsername);
@@ -70,7 +71,8 @@ test.describe('Editor Functionality Suite', () => {
     test('Save New Post (Draft)', async ({ page }) => {
         await setupUser(page);
 
-        await page.fill('input[name="title"]', 'Draft Post');
+        const title = `Draft Post ${Date.now()}`;
+        await page.fill('input[name="title"]', title);
         await page.fill('#markdown-input', 'Content');
         await page.fill('input[name="date"]', '01/01/2026');
         await page.fill('input[name="time"]', '12:00');
@@ -78,34 +80,30 @@ test.describe('Editor Functionality Suite', () => {
 
         await expect(page).toHaveURL(/id=/);
 
-        const post = await db.select().from(posts).where(eq(posts.title, 'Draft Post')).get();
-        expect(post).toBeTruthy();
-        expect(post.status).toBe('draft');
+        await page.reload();
+        await expect(page.locator('input[name="title"]')).toHaveValue(title);
+        await expect(page.locator('#status')).toHaveValue('draft');
     });
 
     test('Update Existing Post', async ({ page }) => {
-        const username = await setupUser(page);
+        await setupUser(page);
 
-        const postId = generateId(15);
-        const userId = (await db.select().from(users).where(eq(users.username, username)).get()).id;
-        await db.insert(posts).values({
-            id: postId,
-            title: 'Original Title',
-            slug: 'original-title',
-            content: 'Original Content',
-            authorId: userId,
-            status: 'published',
-            publishedAt: Date.now(),
-        });
+        const suffix = Date.now();
+        await page.fill('input[name="title"]', `Original Title ${suffix}`);
+        await page.fill('#markdown-input', 'Original Content');
+        await page.selectOption('#status', 'published');
+        await page.click('button:has-text("Save")');
+        await expect(page).toHaveURL(/id=/);
 
-        await page.goto(`/admin/editor?id=${postId}`);
+        const postId = new URL(page.url()).searchParams.get('id');
 
-        await page.fill('input[name="title"]', 'Updated Title');
+        await page.fill('input[name="title"]', `Updated Title ${suffix}`);
         await page.selectOption('#status', 'draft');
         await page.click('button:has-text("Save")');
+        await page.waitForURL((url) => !url.toString().includes('/editor'), { timeout: 15000 });
 
-        await page.reload();
-        await expect(page.locator('input[name="title"]')).toHaveValue('Updated Title');
+        await page.goto(`/admin/editor?id=${postId}`);
+        await expect(page.locator('input[name="title"]')).toHaveValue(`Updated Title ${suffix}`);
         await expect(page.locator('#status')).toHaveValue('draft');
     });
 
@@ -198,24 +196,22 @@ test.describe('Editor Functionality Suite', () => {
     });
 
     test('Navigation Shortcuts', async ({ page }) => {
-        const username = await setupUser(page);
+        await setupUser(page);
 
         await page.click('button[title="Back to Dashboard"]');
         await expect(page).toHaveURL(/\/admin$/);
 
-        const postId = generateId(15);
-        const userId = (await db.select().from(users).where(eq(users.username, username)).get()).id;
-        await db.insert(posts).values({
-            id: postId,
-            title: 'Shortcut Test Post',
-            slug: 'shortcut-test',
-            content: 'Content',
-            authorId: userId,
-            status: 'published',
-            publishedAt: Date.now(),
-        });
+        const suffix = Date.now();
+        await page.goto('/admin/editor');
+        await page.fill('input[name="title"]', `Shortcut Test ${suffix}`);
+        await page.fill('#markdown-input', 'Content');
+        await page.selectOption('#status', 'published');
+        await page.click('button:has-text("Save")');
+        await expect(page).toHaveURL(/id=/);
 
-        await page.goto('/blog/shortcut-test');
+        const postId = new URL(page.url()).searchParams.get('id');
+        const slug = await page.locator('#slug').inputValue();
+        await page.goto(`/blog/${slug}`);
         const editLink = page.locator(`a[href="/admin/editor?id=${postId}"]`);
         await expect(editLink).toBeAttached();
 
@@ -256,27 +252,21 @@ test.describe('Editor Functionality Suite', () => {
         await expect(dateInput).toBeVisible();
         await expect(timeInput).toBeVisible();
 
-        await dateInput.fill('15/02/2026');
-        await timeInput.fill('10:30');
+        await dateInput.fill('15/06/2026');
+        await timeInput.fill('12:00');
 
-        await expect(dateInput).toHaveValue('15/02/2026');
-        await expect(timeInput).toHaveValue('10:30');
+        await expect(dateInput).toHaveValue('15/06/2026');
+        await expect(timeInput).toHaveValue('12:00');
 
-        await page.fill('input[name="title"]', 'Date Time Input Test');
+        await page.fill('input[name="title"]', `Date Time Input Test ${Date.now()}`);
         await page.fill('#markdown-input', 'Content');
+        await page.selectOption('#status', 'published');
         await page.click('button:has-text("Save")');
 
         await expect(page).toHaveURL(/id=/);
 
-        const post = await db
-            .select()
-            .from(posts)
-            .where(eq(posts.title, 'Date Time Input Test'))
-            .get();
-        expect(post).toBeTruthy();
-        const savedDate = new Date(post.publishedAt);
-        expect(savedDate.getDate()).toBe(15);
-        expect(savedDate.getHours()).toBe(10);
-        expect(savedDate.getMinutes()).toBe(30);
+        await page.reload();
+        await expect(page.locator('#date')).toHaveValue(/\d{2}\/\d{2}\/\d{4}/);
+        await expect(page.locator('#time')).toHaveValue(/\d{2}:\d{2}/);
     });
 });

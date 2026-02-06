@@ -8,7 +8,7 @@ import { generateId } from 'lucia';
 let ownerSeeded = false;
 async function seedOwner() {
     if (ownerSeeded) return;
-    const credentials = import.meta.env.OWNER_CREDENTIALS || process.env.OWNER_CREDENTIALS;
+    const credentials = process.env.OWNER_CREDENTIALS;
     if (!credentials) return;
     const [username, hash] = credentials.split(':');
     if (!username || !hash) return;
