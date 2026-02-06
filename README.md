@@ -38,6 +38,12 @@ PORT=4321
 NODE_ENV=production
 ```
 
+To generate the `OWNER_CREDENTIALS` string, use `htpasswd` with Bcrypt:
+
+```bash
+htpasswd -nbB -C 10 username password
+```
+
 ### Installation
 
 ```bash
