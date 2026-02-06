@@ -6,7 +6,7 @@ A minimal, feature-rich blog built with Astro, Bun, Drizzle, SQLite, and Tailwin
 
 - **Pure Astro** (SSR with Node adapter)
 - **Bun** Runtime & Package Manager
-- **Drizzle ORM** + **SQLite** (Bun built-in)
+- **Drizzle ORM** + **SQLite** (via libsql)
 - **Lucia Auth v3** (Session management with Bcrypt)
 - **Tailwind CSS v4** (CSS-first config)
 - **UI Components** (Button, Input, Badge, etc.)

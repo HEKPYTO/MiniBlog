@@ -3,9 +3,9 @@
     "type": "module",
     "version": "0.0.1",
     "scripts": {
-        "dev": "astro build && DB_FILENAME=miniblog.dev.db bun ./dist/server/entry.mjs",
+        "dev": "DB_FILENAME=miniblog.dev.db astro dev",
         "build": "astro build",
-        "preview": "astro build && bun ./dist/server/entry.mjs",
+        "preview": "astro preview",
         "astro": "astro",
         "db:generate": "drizzle-kit generate",
         "db:push": "drizzle-kit push",
@@ -23,6 +23,7 @@
     "dependencies": {
         "@astrojs/node": "^9.5.2",
         "@astrojs/sitemap": "^3.7.0",
+        "@libsql/client": "^0.17.0",
         "@lucia-auth/adapter-drizzle": "^1.1.0",
         "@shikijs/markdown-it": "^3.22.0",
         "@tailwindcss/vite": "^4.1.18",

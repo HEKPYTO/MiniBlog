@@ -1,7 +1,6 @@
 /* eslint-disable no-console */
-import { drizzle } from 'drizzle-orm/bun-sqlite';
-import { migrate } from 'drizzle-orm/bun-sqlite/migrator';
-import { Database } from 'bun:sqlite';
+import { drizzle } from 'drizzle-orm/libsql';
+import { migrate } from 'drizzle-orm/libsql/migrator';
 import path from 'path';
 import fs from 'fs';
 
@@ -18,8 +17,7 @@ if (!fs.existsSync(dbDir)) {
 }
 
 try {
-    const sqlite = new Database(dbPath);
-    const db = drizzle(sqlite);
+    const db = drizzle({ connection: { url: 'file:' + dbPath } });
 
     const migrationsFolder = path.resolve(process.cwd(), 'drizzle');
 
@@ -28,7 +26,6 @@ try {
     migrate(db, { migrationsFolder });
 
     console.log('[Migration] Successfully applied migrations.');
-    sqlite.close();
 } catch (e) {
     console.error('[Migration] Failed to migrate database.');
     console.error(e);
