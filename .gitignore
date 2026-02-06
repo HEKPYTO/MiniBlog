@@ -15,6 +15,7 @@ dist/
 .idea/
 *.swp
 *.swo
+.claude/
 
 # System
 .DS_Store
@@ -52,6 +53,5 @@ temp/
 /*.md
 
 !/README.md
-scripts/
 docker-compose.prod.yml
-.claude
+.playwright-mcp/

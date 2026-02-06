@@ -8,9 +8,6 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone',
   }),
-  security: {
-    checkOrigin: true,
-  },
   integrations: [sitemap()],
   vite: {
     plugins: [tailwindcss()],

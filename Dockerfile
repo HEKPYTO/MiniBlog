@@ -12,10 +12,11 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/drizzle.config.js ./drizzle.config.js
+COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/bun.lockb ./bun.lockb
 
-RUN bun install --production
+RUN bun install --production --ignore-scripts
 
 RUN mkdir data && chown 1000:1000 data
 
