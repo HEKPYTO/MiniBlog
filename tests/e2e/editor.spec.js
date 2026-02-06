@@ -30,7 +30,7 @@ test.describe('Editor Functionality Suite', () => {
         });
         expect(response.status()).toBe(200);
 
-        await page.goto('http://127.0.0.1:4321/'); // Trigger cookie load
+        await page.goto('http://127.0.0.1:4321/'); 
         await expect(
             page.locator('button:has-text("Logout"), a:has-text("Logout")').first(),
         ).toBeVisible();

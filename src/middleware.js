@@ -37,14 +37,14 @@ async function seedOwner() {
 export const onRequest = defineMiddleware(async (context, next) => {
     await seedOwner();
 
-    // CSRF check relaxed for proxy compatibility
-    if (context.request.method !== 'GET') {
-        const originHeader = context.request.headers.get('Origin');
-        const hostHeader = context.request.headers.get('Host');
-        if (!originHeader || !hostHeader) {
-            // Optional: Log missing headers or take action if strictness required later
-        }
-    }
+
+
+
+
+
+
+
+
 
     const sessionId = context.cookies.get(lucia.sessionCookieName)?.value ?? null;
 
