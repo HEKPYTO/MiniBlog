@@ -4,11 +4,10 @@ import js from '@eslint/js';
 import globals from 'globals';
 
 export default [
-    js.configs.recommended,
-    ...eslintPluginAstro.configs.recommended,
     {
         ignores: ['dist/', '.astro/', 'node_modules/'],
     },
+    ...eslintPluginAstro.configs.recommended,
     {
         files: ['**/*.js', '**/*.mjs'],
         languageOptions: {
@@ -18,6 +17,14 @@ export default [
                 ...globals.browser,
                 ...globals.node,
             },
+        },
+        rules: {
+            ...js.configs.recommended.rules,
+            'no-console': 'warn',
+            'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+            semi: ['error', 'always'],
+            quotes: ['error', 'single', { avoidEscape: true }],
+            'no-undef': 'error',
         },
     },
     {
@@ -37,21 +44,19 @@ export default [
                 },
             },
         },
-    },
-    {
-        files: ['**/*.js', '**/*.mjs', '**/*.astro'],
         rules: {
             'no-console': 'warn',
             'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
             semi: ['error', 'always'],
             quotes: ['error', 'single', { avoidEscape: true }],
-            'no-undef': 'off',
+            'no-undef': 'off', 
         },
     },
     {
         files: ['scripts/**/*.js'],
         rules: {
             'no-console': 'off',
+            'no-undef': 'off',
         },
     },
 ];

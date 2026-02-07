@@ -4,6 +4,7 @@ import Header from '../components/Header.astro';
 import { db } from '../db';
 import { posts, users } from '../db/schema';
 import { desc, eq, and, lte, like, or } from 'drizzle-orm';
+import Badge from '../components/ui/Badge.astro';
 import { getSiteSettings } from '../lib/settings';
 const siteSettings = await getSiteSettings();
 const url = new URL(Astro.request.url);
@@ -18,6 +19,7 @@ try {
                 title: posts.title,
                 slug: posts.slug,
                 excerpt: posts.excerpt,
+                tags: posts.tags,
                 publishedAt: posts.publishedAt,
                 readingTime: posts.readingTime,
                 author: users.username,
@@ -44,6 +46,7 @@ try {
                 title: posts.title,
                 slug: posts.slug,
                 excerpt: posts.excerpt,
+                tags: posts.tags,
                 publishedAt: posts.publishedAt,
                 readingTime: posts.readingTime,
                 author: users.username,
@@ -130,6 +133,15 @@ const siteSchema = {
                             <p class="text-slate-500 dark:text-slate-400 text-lg leading-relaxed">
                                 {post.excerpt}
                             </p>
+                        )}
+                        {post.tags && (
+                            <div class="flex flex-wrap gap-2 pt-1 relative z-10">
+                                {post.tags.split(',').map((tag) => (
+                                    <a href={`/?q=${tag.trim()}`} class="inline-block">
+                                        <Badge variant="secondary">#{tag.trim()}</Badge>
+                                    </a>
+                                ))}
+                            </div>
                         )}
                         <div class="text-sm text-slate-500 dark:text-slate-400 pt-1">
                             <span>By {post.author}</span>
