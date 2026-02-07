@@ -37,7 +37,7 @@ test.describe('Editor Functionality Suite', () => {
         return uniqueUsername;
     }
 
-    test('UI Elements Presence', async ({ page }) => {
+    test('Editor: UI Elements Presence', async ({ page }) => {
         await setupUser(page);
 
         await expect(page.locator('input[name="title"]')).toBeVisible();
@@ -48,7 +48,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#settings-panel')).toBeVisible();
     });
 
-    test('Markdown Preview Generation', async ({ page }) => {
+    test('Editor: Markdown Preview Generation', async ({ page }) => {
         await setupUser(page);
 
         const editor = page.locator('#markdown-input');
@@ -60,7 +60,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(preview.locator('strong')).toHaveText('Bold Text');
     });
 
-    test('Slug Auto-generation', async ({ page }) => {
+    test('Editor: Slug Auto-generation', async ({ page }) => {
         await setupUser(page);
 
         await page.fill('input[name="title"]', 'My Awesome Post!');
@@ -68,7 +68,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#slug')).toHaveValue('my-awesome-post');
     });
 
-    test('Save New Post (Draft)', async ({ page }) => {
+    test('Editor: Save New Post (Draft)', async ({ page }) => {
         await setupUser(page);
 
         const title = `Draft Post ${Date.now()}`;
@@ -85,7 +85,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#status')).toHaveValue('draft');
     });
 
-    test('Update Existing Post', async ({ page }) => {
+    test('Editor: Update Existing Post', async ({ page }) => {
         await setupUser(page);
 
         const suffix = Date.now();
@@ -107,7 +107,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(page.locator('#status')).toHaveValue('draft');
     });
 
-    test('Collapse Settings Panel & Persistence', async ({ page }) => {
+    test('Editor: Collapse Settings Panel & Persistence', async ({ page }) => {
         await setupUser(page);
 
         const panel = page.locator('#settings-panel');
@@ -146,7 +146,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(expandedBox.height).toBeGreaterThan(150);
     });
 
-    test('Import/Export Roundtrip', async ({ page }) => {
+    test('Editor: Import/Export Roundtrip', async ({ page }) => {
         await setupUser(page);
 
         const importContent = '# Roundtrip Test\n\nContent for roundtrip.';
@@ -169,7 +169,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(exportedContent).toContain('title: "Roundtrip Post"');
     });
 
-    test('Vertical Resize (Snap-to-Collapse)', async ({ page }) => {
+    test('Editor: Vertical Resize (Snap-to-Collapse)', async ({ page }) => {
         await setupUser(page);
 
         const resizer = page.locator('#vertical-resizer');
@@ -195,7 +195,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(collapsedBox.height).toBeLessThan(60);
     });
 
-    test('Navigation Shortcuts', async ({ page }) => {
+    test('Editor: Navigation Shortcuts', async ({ page }) => {
         await setupUser(page);
 
         await page.click('button[title="Back to Dashboard"]');
@@ -221,7 +221,7 @@ test.describe('Editor Functionality Suite', () => {
         expect(page.url()).toContain(postId);
     });
 
-    test('Slug Collision Toast', async ({ page }) => {
+    test('Editor: Slug Collision Toast', async ({ page }) => {
         await setupUser(page);
 
         const existingSlug = `collision-target-${Date.now()}`;
@@ -244,7 +244,7 @@ test.describe('Editor Functionality Suite', () => {
         await expect(toast).toContainText(`Slug "${existingSlug}" is already in use`);
     });
 
-    test('Date and Time Inputs', async ({ page }) => {
+    test('Editor: Date and Time Inputs', async ({ page }) => {
         await setupUser(page);
 
         const dateInput = page.locator('#date');

@@ -57,9 +57,27 @@ try {
 } catch (e) {
     errorMsg = 'Database error: ' + e.message;
 }
+const siteSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: siteSettings.site_name,
+    url: Astro.site,
+    description: siteSettings.site_subtitle,
+    potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+            '@type': 'EntryPoint',
+            urlTemplate: `${Astro.site}?q={search_term_string}`,
+        },
+        'query-input': 'required name=search_term_string',
+    },
+};
 ---
 
 <Layout title={siteSettings.site_name}>
+    <Fragment slot="head">
+        <script type="application/ld+json" set:html={JSON.stringify(siteSchema)} />
+    </Fragment>
     <Header siteName={siteSettings.site_name} />
     <main class="container mx-auto max-w-4xl py-6 lg:py-10 px-4">
         {

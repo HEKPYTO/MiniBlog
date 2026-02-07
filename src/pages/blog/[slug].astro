@@ -6,11 +6,13 @@ import { posts, users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { getMarkdownParser } from '../../lib/markdown';
 import Badge from '../../components/ui/Badge.astro';
+import { getSiteSettings } from '../../lib/settings';
 const { slug } = Astro.params;
 const user = Astro.locals.user;
 if (!slug) {
     return Astro.redirect('/404');
 }
+const siteSettings = await getSiteSettings();
 const post = await db
     .select({
         id: posts.id,
@@ -36,6 +38,10 @@ const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     headline: post.title,
+    mainEntityOfPage: {
+        '@type': 'WebPage',
+        '@id': Astro.url,
+    },
     image: [ogImage.toString()],
     datePublished: post.publishedAt
         ? new Date(post.publishedAt).toISOString()
@@ -46,6 +52,14 @@ const articleSchema = {
             name: post.author,
         },
     ],
+    publisher: {
+        '@type': 'Organization',
+        name: siteSettings.site_name,
+        logo: {
+            '@type': 'ImageObject',
+            url: new URL('/icon.svg', Astro.url),
+        },
+    },
     description: post.excerpt || post.title,
 };
 ---
@@ -54,6 +68,7 @@ const articleSchema = {
     title={post.title}
     description={post.excerpt || post.title}
     image={ogImage.toString()}
+    imageAlt={`Cover image for ${post.title}`}
     type="article"
 >
     <Fragment slot="head">

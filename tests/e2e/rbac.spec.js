@@ -31,7 +31,7 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
         await context.close();
     });
 
-    test('1. Owner Privileges: Full Access', async ({ page }) => {
+    test('RBAC: Owner Privileges (Full Access)', async ({ page }) => {
         const success = await login(page, ownerUser);
         expect(success).toBe(true);
 
@@ -61,7 +61,7 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
         await expect(page.locator('table')).toContainText(memberUser, { timeout: 10000 });
     });
 
-    test('2. Admin (Staff) Restrictions', async ({ page }) => {
+    test('RBAC: Admin (Staff) Restrictions', async ({ page }) => {
         await login(page, ownerUser);
         const staffName = `mod_${Date.now()}`;
         await page.goto('http://127.0.0.1:4321/admin/users');
@@ -84,7 +84,7 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
         await expect(page).toHaveURL('http://127.0.0.1:4321/admin');
     });
 
-    test('3. Member (User) Restrictions', async ({ page }) => {
+    test('RBAC: Member (User) Restrictions', async ({ page }) => {
         await login(page, ownerUser);
         const memberName = `peep_${Date.now()}`;
         await page.goto('http://127.0.0.1:4321/admin/users');
@@ -102,7 +102,7 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
         await expect(page).toHaveURL('http://127.0.0.1:4321/');
     });
 
-    test('4. Guest Restrictions', async ({ page }) => {
+    test('RBAC: Guest Restrictions', async ({ page }) => {
         await page.goto('http://127.0.0.1:4321/admin');
         await page.waitForURL(/\/login/);
         await expect(page).toHaveURL('http://127.0.0.1:4321/login');
