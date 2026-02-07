@@ -26,8 +26,8 @@ A self-hosted, minimal blog platform with an advanced markdown editor, role-base
 
 The clean, minimal homepage lists all published posts with reading time estimates and author attribution.
 
-| Light Mode | Dark Mode |
-|:---:|:---:|
+|                  Light Mode                   |               Dark Mode                |
+| :-------------------------------------------: | :------------------------------------: |
 | ![Light](screenshots/homepage-with-posts.png) | ![Dark](screenshots/homepage-dark.png) |
 
 ### Blog Post
@@ -128,23 +128,23 @@ docker pull ghcr.io/hekpyto/miniblog
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Astro v5 (SSR) |
-| Styling | Tailwind CSS v4 + @tailwindcss/typography |
-| Database | SQLite via @libsql/client |
-| ORM | Drizzle ORM |
-| Auth | Lucia v3 + oslo (Bcrypt) |
-| Markdown | markdown-it + Shiki (dual-theme syntax highlighting) |
-| OG Images | Satori + Sharp |
-| Runtime | Bun |
-| Testing | Vitest + Playwright |
-| CI/CD | GitHub Actions |
+| Layer     | Technology                                           |
+| --------- | ---------------------------------------------------- |
+| Framework | Astro v5 (SSR)                                       |
+| Styling   | Tailwind CSS v4 + @tailwindcss/typography            |
+| Database  | SQLite via @libsql/client                            |
+| ORM       | Drizzle ORM                                          |
+| Auth      | Lucia v3 + oslo (Bcrypt)                             |
+| Markdown  | markdown-it + Shiki (dual-theme syntax highlighting) |
+| OG Images | Satori + Sharp                                       |
+| Runtime   | Bun                                                  |
+| Testing   | Vitest + Playwright                                  |
+| CI/CD     | GitHub Actions                                       |
 
 ## RBAC
 
-| Role | Access |
-|------|--------|
+| Role      | Access                                |
+| --------- | ------------------------------------- |
 | **Owner** | Full access including user management |
-| **Admin** | Dashboard and editor |
-| **User** | Public pages only |
+| **Admin** | Dashboard and editor                  |
+| **User**  | Public pages only                     |
