@@ -1,5 +1,6 @@
 ---
 import Button from './ui/Button.astro';
+const { siteName = 'Miniblog' } = Astro.props;
 const user = Astro.locals.user;
 ---
 
@@ -8,7 +9,7 @@ const user = Astro.locals.user;
 >
     <div class="container flex h-16 items-center justify-between mx-auto px-4 sm:px-8">
         <a href="/" class="flex items-center space-x-2 font-bold text-lg tracking-tight shrink-0">
-            <span>Miniblog</span>
+            <span>{siteName}</span>
         </a>
         <div class="flex-1 max-w-md mx-4 hidden sm:block">
             <form action="/" method="get" class="relative group">

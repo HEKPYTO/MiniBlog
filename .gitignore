@@ -37,21 +37,13 @@ playwright-report/
 coverage/
 
 # Temporary
-
 tmp/
-
 temp/
 
-
-
 # Root documentation and metadata
-
 /*.xml
-
 /*.txt
-
 /*.md
-
 !/README.md
 docker-compose.prod.yml
 .playwright-mcp/

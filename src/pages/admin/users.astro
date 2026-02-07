@@ -11,6 +11,7 @@ import Badge from '../../components/ui/Badge.astro';
 import Input from '../../components/ui/Input.astro';
 import Label from '../../components/ui/Label.astro';
 import Select from '../../components/ui/Select.astro';
+import { getSiteSettings, updateSiteSetting } from '../../lib/settings';
 
 const user = Astro.locals.user;
 
@@ -28,7 +29,21 @@ if (Astro.request.method === 'POST') {
     const formData = await Astro.request.formData();
     const action = formData.get('action');
     try {
-        if (action === 'create') {
+        if (action === 'save_settings') {
+            const siteName = formData.get('site_name');
+            const siteTitle = formData.get('site_title');
+            const siteSubtitle = formData.get('site_subtitle');
+            if (typeof siteName === 'string' && siteName.trim()) {
+                await updateSiteSetting('site_name', siteName.trim());
+            }
+            if (typeof siteTitle === 'string' && siteTitle.trim()) {
+                await updateSiteSetting('site_title', siteTitle.trim());
+            }
+            if (typeof siteSubtitle === 'string' && siteSubtitle.trim()) {
+                await updateSiteSetting('site_subtitle', siteSubtitle.trim());
+            }
+            message = 'Site settings updated';
+        } else if (action === 'create') {
             const username = formData.get('username');
             const password = formData.get('password');
             const role = formData.get('role');
@@ -75,6 +90,8 @@ if (Astro.request.method === 'POST') {
         messageType = 'error';
     }
 }
+
+const siteSettings = await getSiteSettings();
 
 const url = new URL(Astro.request.url);
 const q = url.searchParams.get('q') || '';
@@ -127,48 +144,14 @@ function getSortLink(column) {
 }
 ---
 
-<Layout title="User Manager">
-    <Header />
+<Layout title="Site Management">
+    <Header siteName={siteSettings.site_name} />
     <main class="container mx-auto max-w-5xl py-8 px-4">
-        <div class="grid gap-8 lg:grid-cols-3 mb-8 items-center">
-            <div class="lg:col-span-1">
-                <h1 class="text-3xl font-bold">User Management</h1>
-            </div>
-            <div class="lg:col-span-2">
-                <form method="get" class="flex gap-2 w-full">
-                    <Input
-                        type="text"
-                        name="q"
-                        value={q}
-                        placeholder="Search username..."
-                        class="flex-1 h-9"
-                        oninput="this.form.submit()"
-                        autofocus={!!q}
-                    />
-                    {
-                        (q || roleFilter) && (
-                            <a href="/admin/users" class="flex items-center">
-                                <Button variant="ghost" type="button" class="h-9">
-                                    Clear
-                                </Button>
-                            </a>
-                        )
-                    }
-                    <Select
-                        name="role"
-                        class="h-9 w-auto min-w-[120px]"
-                        onchange="this.form.submit()"
-                    >
-                        <option value="">All Roles</option>
-                        <option value="user" selected={roleFilter === 'user'}>User</option>
-                        <option value="admin" selected={roleFilter === 'admin'}>Admin</option>
-                        <option value="owner" selected={roleFilter === 'owner'}>Owner</option>
-                    </Select>
-                    <a href="/admin">
-                        <Button variant="outline" type="button" class="h-9 shrink-0"> Back </Button>
-                    </a>
-                </form>
-            </div>
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-3xl font-bold">Site Management</h1>
+            <a href="/admin">
+                <Button variant="outline" type="button" class="h-9 shrink-0">Back</Button>
+            </a>
         </div>
 
         {
@@ -181,12 +164,83 @@ function getSortLink(column) {
             )
         }
 
+        <div
+            class="rounded-md border border-slate-200 dark:border-slate-800 p-6 bg-white dark:bg-slate-950 mb-6"
+        >
+            <h2 class="text-xl font-bold mb-4">Site Settings</h2>
+            <form method="post" class="space-y-4">
+                <input type="hidden" name="action" value="save_settings" />
+                <div class="grid gap-4 sm:grid-cols-3">
+                    <div class="space-y-2">
+                        <Label for="site_name">Header Name</Label>
+                        <Input
+                            name="site_name"
+                            id="site_name"
+                            value={siteSettings.site_name}
+                            required
+                        />
+                    </div>
+                    <div class="space-y-2">
+                        <Label for="site_title">Homepage Title</Label>
+                        <Input
+                            name="site_title"
+                            id="site_title"
+                            value={siteSettings.site_title}
+                            required
+                        />
+                    </div>
+                    <div class="space-y-2">
+                        <Label for="site_subtitle">Homepage Subtitle</Label>
+                        <Input
+                            name="site_subtitle"
+                            id="site_subtitle"
+                            value={siteSettings.site_subtitle}
+                            required
+                        />
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <Button type="submit">Save Settings</Button>
+                </div>
+            </form>
+        </div>
+
+        <h2 class="text-xl font-bold mb-4">Users</h2>
+        <div class="mb-4">
+            <form method="get" class="flex gap-2 w-full">
+                <Input
+                    type="text"
+                    name="q"
+                    value={q}
+                    placeholder="Search username..."
+                    class="flex-1 h-9"
+                    oninput="this.form.submit()"
+                    autofocus={!!q}
+                />
+                {
+                    (q || roleFilter) && (
+                        <a href="/admin/users" class="flex items-center">
+                            <Button variant="ghost" type="button" class="h-9">
+                                Clear
+                            </Button>
+                        </a>
+                    )
+                }
+                <Select name="role" class="h-9 w-auto min-w-[120px]" onchange="this.form.submit()">
+                    <option value="">All Roles</option>
+                    <option value="user" selected={roleFilter === 'user'}>User</option>
+                    <option value="admin" selected={roleFilter === 'admin'}>Admin</option>
+                    <option value="owner" selected={roleFilter === 'owner'}>Owner</option>
+                </Select>
+            </form>
+        </div>
+
         <div class="grid gap-8 lg:grid-cols-3">
             <div class="lg:col-span-1">
                 <div
                     class="rounded-md border border-slate-200 dark:border-slate-800 p-6 bg-white dark:bg-slate-950"
                 >
-                    <h2 class="text-xl font-bold mb-4">Create User</h2>
+                    <h3 class="text-lg font-bold mb-4">Create User</h3>
                     <form method="post" class="space-y-4">
                         <input type="hidden" name="action" value="create" />
                         <div class="space-y-2">

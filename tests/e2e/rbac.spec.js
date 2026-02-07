@@ -37,7 +37,7 @@ test.describe.serial('RBAC: Comprehensive Security Checks', () => {
 
         await page.goto('http://127.0.0.1:4321/admin/users');
         await expect(page).toHaveURL('http://127.0.0.1:4321/admin/users');
-        await expect(page.locator('h1')).toContainText('User Management');
+        await expect(page.locator('h1')).toContainText('Site Management');
 
         await page.fill('input[name="q"]', '');
         await page.waitForLoadState('networkidle');

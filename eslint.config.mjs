@@ -48,4 +48,10 @@ export default [
             'no-undef': 'off',
         },
     },
+    {
+        files: ['scripts/**/*.js'],
+        rules: {
+            'no-console': 'off',
+        },
+    },
 ];

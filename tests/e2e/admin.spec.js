@@ -135,6 +135,63 @@ test.describe('Admin Dashboard', () => {
     });
 });
 
+test.describe('Site Settings', () => {
+    test.beforeEach(async ({ page }) => {
+        await login(page);
+    });
+
+    test('Settings: Page shows Site Management heading', async ({ page }) => {
+        await page.goto('/admin/users');
+        await expect(page.locator('h1')).toContainText('Site Management');
+        await expect(page.locator('h2', { hasText: 'Site Settings' })).toBeVisible();
+        await expect(page.locator('h2', { hasText: 'Users' })).toBeVisible();
+    });
+
+    test('Settings: Dashboard links to Settings page', async ({ page }) => {
+        await page.goto('/admin');
+        await page.click('a:has-text("Settings")');
+        await expect(page).toHaveURL(/\/admin\/users/);
+        await expect(page.locator('h1')).toContainText('Site Management');
+    });
+
+    test('Settings: Save and verify site settings', async ({ page }) => {
+        const unique = Date.now();
+        const name = `TestSite_${unique}`;
+        const title = `TestTitle_${unique}`;
+        const subtitle = `TestSub_${unique}`;
+
+        await page.goto('/admin/users');
+        await page.fill('input[name="site_name"]', name);
+        await page.fill('input[name="site_title"]', title);
+        await page.fill('input[name="site_subtitle"]', subtitle);
+        await page.click('button:has-text("Save Settings")');
+        await page.waitForLoadState('networkidle');
+
+        await expect(page.locator('.bg-green-100')).toContainText('Site settings updated');
+
+        await expect(page.locator('input[name="site_name"]')).toHaveValue(name);
+        await expect(page.locator('input[name="site_title"]')).toHaveValue(title);
+        await expect(page.locator('input[name="site_subtitle"]')).toHaveValue(subtitle);
+
+        await expect(page.locator('header a[href="/"] span')).toHaveText(name);
+
+        await page.goto('/');
+        await expect(page.locator('header a[href="/"] span')).toHaveText(name);
+        await expect(page.locator('h1')).toHaveText(title);
+        await expect(page.locator('h1 + p')).toHaveText(subtitle);
+
+        await page.goto('/admin/users');
+        await page.fill('input[name="site_name"]', 'Miniblog');
+        await page.fill('input[name="site_title"]', 'MiniBlog');
+        await page.fill(
+            'input[name="site_subtitle"]',
+            'A minimal blog built with Astro and SQLite.',
+        );
+        await page.click('button:has-text("Save Settings")');
+        await page.waitForLoadState('networkidle');
+    });
+});
+
 test.describe('User Management', () => {
     test.beforeEach(async ({ page }) => {
         await login(page);

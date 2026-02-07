@@ -4,6 +4,8 @@ import Header from '../components/Header.astro';
 import { db } from '../db';
 import { posts, users } from '../db/schema';
 import { desc, eq, and, lte, like, or } from 'drizzle-orm';
+import { getSiteSettings } from '../lib/settings';
+const siteSettings = await getSiteSettings();
 const url = new URL(Astro.request.url);
 const q = url.searchParams.get('q');
 let publishedPosts = [];
@@ -57,8 +59,8 @@ try {
 }
 ---
 
-<Layout title="Miniblog">
-    <Header />
+<Layout title={siteSettings.site_name}>
+    <Header siteName={siteSettings.site_name} />
     <main class="container mx-auto max-w-4xl py-6 lg:py-10 px-4">
         {
             errorMsg && (
@@ -72,9 +74,9 @@ try {
             )
         }
         <div class="max-w-2xl mx-auto w-full flex flex-col items-start text-left gap-4 mb-12">
-            <h1 class="font-bold text-4xl tracking-tight lg:text-6xl">MiniBlog</h1>
+            <h1 class="font-bold text-4xl tracking-tight lg:text-6xl">{siteSettings.site_title}</h1>
             <p class="text-xl text-slate-500 dark:text-slate-400">
-                A minimal blog built with Astro and SQLite.
+                {siteSettings.site_subtitle}
             </p>
         </div>
 

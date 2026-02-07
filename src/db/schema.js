@@ -36,3 +36,7 @@ export const posts = sqliteTable('posts', {
         .notNull()
         .$defaultFn(() => Date.now()),
 });
+export const siteSettings = sqliteTable('site_settings', {
+    key: text('key').primaryKey(),
+    value: text('value').notNull(),
+});
