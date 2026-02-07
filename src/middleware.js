@@ -4,6 +4,10 @@ import { db } from './db';
 import { users } from './db/schema';
 import { eq } from 'drizzle-orm';
 import { generateId } from 'lucia';
+import { getMarkdownParser } from './lib/markdown';
+
+
+getMarkdownParser();
 
 let ownerSeeded = false;
 async function seedOwner() {
