@@ -1,0 +1,12 @@
+<svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path class="paper" d="M64 84C64 72.9543 72.9543 64 84 64H428C439.046 64 448 72.9543 448 84V336L336 448H84C72.9543 448 64 439.046 64 428V84Z" fill="#0f172a"/>
+    <path class="fold" d="M336 448V344C336 339.582 339.582 336 344 336H448L336 448Z" fill="#334155"/>
+    <style>
+        .paper { fill: #0f172a; }
+        .fold { fill: #334155; }
+        @media (prefers-color-scheme: dark) {
+            .paper { fill: #f1f5f9; }
+            .fold { fill: #cbd5e1; }
+        }
+    </style>
+</svg>

@@ -27,6 +27,32 @@ test.describe('Authentication', () => {
         await expect(page.locator('text=Password must be at least 8 characters')).toBeVisible();
     });
 
+    test('Register: Fail on Short Username', async ({ page }) => {
+        await page.goto('/register');
+        await page.evaluate(() => {
+            const form = document.querySelector('form');
+            if (form) form.noValidate = true;
+        });
+        await page.fill('input[name="username"]', 'usr');
+        await page.fill('input[name="password"]', 'Password123!');
+        await page.click('button[type="submit"]');
+        await expect(page.locator('text=Invalid username')).toBeVisible();
+    });
+
+    test('Register: Success with 4-char Username', async ({ page }) => {
+        const username = `u${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`; 
+        const password = 'Password123!';
+
+        await page.goto('/register');
+        await page.fill('input[name="username"]', username);
+        await page.fill('input[name="password"]', password);
+        await page.click('button[type="submit"]');
+        await page.waitForURL('http://127.0.0.1:4321/');
+        await expect(
+            page.locator('button:has-text("Logout"), a:has-text("Logout")').first(),
+        ).toBeVisible();
+    });
+
     test('Register: Fail on Invalid Username Chars', async ({ page }) => {
         await page.goto('/register');
         await page.fill('input[name="username"]', 'user name');

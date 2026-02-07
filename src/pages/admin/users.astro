@@ -34,11 +34,11 @@ if (Astro.request.method === 'POST') {
             const role = formData.get('role');
             if (
                 typeof username !== 'string' ||
-                username.length < 5 ||
+                username.length < 4 ||
                 username.length > 31 ||
                 !/^[a-zA-Z0-9_-]+$/.test(username)
             )
-                throw new Error('Invalid username: 5-31 chars, alphanumeric, underscore, hyphen');
+                throw new Error('Invalid username: 4-31 chars, alphanumeric, underscore, hyphen');
             if (typeof password !== 'string' || password.length < 8 || password.length > 255)
                 throw new Error('Invalid password: 8-255 chars');
             if (!['user', 'admin', 'owner'].includes(role)) throw new Error('Invalid role');
@@ -191,7 +191,7 @@ function getSortLink(column) {
                         <input type="hidden" name="action" value="create" />
                         <div class="space-y-2">
                             <Label for="username">Username</Label>
-                            <Input name="username" id="username" required minlength="5" />
+                            <Input name="username" id="username" required minlength="4" />
                         </div>
                         <div class="space-y-2">
                             <Label for="password">Password</Label>

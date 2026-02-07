@@ -13,7 +13,7 @@ if (Astro.request.method === 'POST') {
     const formData = await Astro.request.formData();
     const username = formData.get('username');
     const password = formData.get('password');
-    if (typeof username !== 'string' || username.length < 5 || username.length > 31) {
+    if (typeof username !== 'string' || username.length < 4 || username.length > 31) {
         errorMessage = 'Invalid username';
     } else if (typeof password !== 'string' || password.length < 6 || password.length > 255) {
         errorMessage = 'Invalid password';
@@ -59,7 +59,7 @@ if (Astro.request.method === 'POST') {
                         id="username"
                         name="username"
                         required
-                        minlength="5"
+                        minlength="4"
                         maxlength="31"
                         autofocus
                     />
