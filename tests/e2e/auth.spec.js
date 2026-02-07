@@ -40,7 +40,9 @@ test.describe('Authentication', () => {
     });
 
     test('Register: Success with 4-char Username', async ({ page }) => {
-        const username = `u${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`; 
+        const username = `u${Math.floor(Math.random() * 1000)
+            .toString()
+            .padStart(3, '0')}`;
         const password = 'Password123!';
 
         await page.goto('/register');
