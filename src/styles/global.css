@@ -12,6 +12,10 @@
     html {
         font-size: 18px;
         line-height: 1.6;
+        overscroll-behavior: none;
+    }
+    body {
+        overscroll-behavior: none;
     }
 }
 
