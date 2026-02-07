@@ -3,6 +3,7 @@ import { posts, users } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import satori from 'satori';
 import sharp from 'sharp';
+import { getSiteSettings } from '../../lib/settings';
 
 let fontsData = null;
 
@@ -25,6 +26,8 @@ export async function GET({ params }) {
         .select({
             title: posts.title,
             publishedAt: posts.publishedAt,
+            readingTime: posts.readingTime,
+            tags: posts.tags,
             author: users.username,
         })
         .from(posts)
@@ -34,6 +37,14 @@ export async function GET({ params }) {
     if (!post) {
         return new Response('Not Found', { status: 404 });
     }
+    const siteSettings = await getSiteSettings();
+    const siteName = siteSettings.site_name || 'Miniblog';
+    const tags = post.tags
+        ? post.tags
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
+        : [];
     const svg = await satori(
         {
             type: 'div',
@@ -42,39 +53,150 @@ export async function GET({ params }) {
                     display: 'flex',
                     height: '100%',
                     width: '100%',
-                    alignItems: 'center',
-                    justifyContent: 'center',
                     flexDirection: 'column',
-                    backgroundImage: 'linear-gradient(to bottom, #dbf4ff, #fff1f1)',
-                    fontSize: 60,
-                    letterSpacing: -2,
-                    fontWeight: 700,
-                    textAlign: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: '#f8fafc',
+                    fontFamily: 'Jost',
+                    padding: 0,
                 },
                 children: [
+                    // Top accent bar
                     {
                         type: 'div',
                         props: {
                             style: {
-                                backgroundImage:
-                                    'linear-gradient(90deg, rgb(0, 124, 240), rgb(0, 223, 216))',
-                                backgroundClip: 'text',
-                                '-webkit-background-clip': 'text',
-                                color: 'transparent',
-                                padding: '20px 40px',
+                                display: 'flex',
+                                width: '100%',
+                                height: '6px',
+                                backgroundColor: '#0f172a',
                             },
-                            children: post.title,
+                            children: [],
                         },
                     },
+                    // Main content area
                     {
                         type: 'div',
                         props: {
                             style: {
-                                fontSize: 30,
-                                marginTop: 20,
-                                color: '#333',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                flex: 1,
+                                padding: '60px 80px 40px',
+                                justifyContent: 'center',
                             },
-                            children: `By ${post.author} • ${new Date(post.publishedAt).toLocaleDateString()}`,
+                            children: [
+                                // Date and reading time
+                                {
+                                    type: 'div',
+                                    props: {
+                                        style: {
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            fontSize: 24,
+                                            color: '#64748b',
+                                            fontWeight: 400,
+                                            gap: '12px',
+                                            marginBottom: '24px',
+                                        },
+                                        children: [
+                                            post.publishedAt
+                                                ? new Date(post.publishedAt).toLocaleDateString()
+                                                : '',
+                                            post.readingTime ? `  ·  ${post.readingTime}` : '',
+                                        ].filter(Boolean),
+                                    },
+                                },
+                                // Title
+                                {
+                                    type: 'div',
+                                    props: {
+                                        style: {
+                                            fontSize: post.title.length > 40 ? 52 : 64,
+                                            fontWeight: 700,
+                                            color: '#0f172a',
+                                            lineHeight: 1.15,
+                                            letterSpacing: '-0.03em',
+                                            marginBottom: '28px',
+                                        },
+                                        children: post.title,
+                                    },
+                                },
+                                // Tags
+                                ...(tags.length > 0
+                                    ? [
+                                          {
+                                              type: 'div',
+                                              props: {
+                                                  style: {
+                                                      display: 'flex',
+                                                      flexWrap: 'wrap',
+                                                      gap: '10px',
+                                                      marginBottom: '12px',
+                                                  },
+                                                  children: tags.slice(0, 4).map((tag) => ({
+                                                      type: 'div',
+                                                      props: {
+                                                          style: {
+                                                              display: 'flex',
+                                                              backgroundColor: '#f1f5f9',
+                                                              border: '1px solid #e2e8f0',
+                                                              borderRadius: '6px',
+                                                              padding: '4px 14px',
+                                                              fontSize: 20,
+                                                              fontWeight: 500,
+                                                              color: '#475569',
+                                                          },
+                                                          children: `#${tag}`,
+                                                      },
+                                                  })),
+                                              },
+                                          },
+                                      ]
+                                    : []),
+                            ],
+                        },
+                    },
+                    // Footer
+                    {
+                        type: 'div',
+                        props: {
+                            style: {
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '28px 80px',
+                                borderTop: '1px solid #e2e8f0',
+                            },
+                            children: [
+                                // Author
+                                {
+                                    type: 'div',
+                                    props: {
+                                        style: {
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            fontSize: 24,
+                                            color: '#64748b',
+                                            fontWeight: 400,
+                                        },
+                                        children: `By ${post.author}`,
+                                    },
+                                },
+                                // Site name
+                                {
+                                    type: 'div',
+                                    props: {
+                                        style: {
+                                            fontSize: 28,
+                                            fontWeight: 700,
+                                            color: '#0f172a',
+                                            letterSpacing: '-0.02em',
+                                        },
+                                        children: siteName,
+                                    },
+                                },
+                            ],
                         },
                     },
                 ],
