@@ -4,18 +4,21 @@ import { eq } from 'drizzle-orm';
 import satori from 'satori';
 import sharp from 'sharp';
 
+let fontsData = null;
+
 async function getFonts() {
+    if (fontsData) return fontsData;
     const weights = [400, 500, 600, 700];
-    const responses = await Promise.all(
+    fontsData = await Promise.all(
         weights.map((weight) =>
             fetch(
                 `https://cdn.jsdelivr.net/npm/@fontsource/jost/files/jost-latin-${weight}-normal.woff`,
             ).then((res) => res.arrayBuffer().then((data) => ({ weight, data }))),
         ),
     );
-    return responses;
+    return fontsData;
 }
-const fontsData = await getFonts();
+
 export async function GET({ params }) {
     const { slug } = params;
     const post = await db
@@ -80,7 +83,7 @@ export async function GET({ params }) {
         {
             width: 1200,
             height: 630,
-            fonts: fontsData.map(({ weight, data }) => ({
+            fonts: (await getFonts()).map(({ weight, data }) => ({
                 name: 'Jost',
                 data,
                 weight,

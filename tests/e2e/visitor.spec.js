@@ -74,6 +74,40 @@ test.describe('System Integration', () => {
         const response = await page.goto('/blog/invalid-slug-xyz');
         expect(response.status()).toBe(404);
     });
+
+    test('System: OG Image returns valid PNG for published post', async ({ page, request }) => {
+        await page.goto('/login');
+        await page.fill('input[name="username"]', 'admin');
+        await page.fill('input[name="password"]', 'password123');
+        await page.click('button[type="submit"]');
+        await page.waitForURL(/\/admin/);
+
+        const suffix = Date.now();
+        const slug = `og-test-${suffix}`;
+        await page.goto('/admin/editor');
+        await page.fill('input[name="title"]', `OG Test ${suffix}`);
+        await page.fill('input[name="slug"]', slug);
+        await page.fill('textarea[name="content"]', 'Test content for OG image.');
+        await page.selectOption('select[name="status"]', 'published');
+        await page.click('button:has-text("Save")');
+        await expect(page).toHaveURL(/id=/);
+
+        const response = await request.get(`/og/${slug}.png`);
+        expect(response.status()).toBe(200);
+        expect(response.headers()['content-type']).toBe('image/png');
+
+        const body = await response.body();
+        expect(body[0]).toBe(0x89);
+        expect(body[1]).toBe(0x50);
+        expect(body[2]).toBe(0x4e);
+        expect(body[3]).toBe(0x47);
+        expect(body.length).toBeGreaterThan(1000);
+    });
+
+    test('System: OG Image returns 404 for non-existent slug', async ({ request }) => {
+        const response = await request.get('/og/non-existent-slug-xyz.png');
+        expect(response.status()).toBe(404);
+    });
 });
 
 test.describe('Visitor Functionality', () => {
