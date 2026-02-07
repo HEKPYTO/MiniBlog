@@ -6,7 +6,6 @@ import { eq } from 'drizzle-orm';
 import { generateId } from 'lucia';
 import { getMarkdownParser } from './lib/markdown';
 
-
 getMarkdownParser();
 
 let ownerSeeded = false;
